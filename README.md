@@ -1,0 +1,1 @@
+Command-line tool to fetch HTML Content From Dynamic Web Pages using Go and chromedp
