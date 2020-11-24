@@ -21,10 +21,23 @@ func setOpt(cmd *cobra.Command) ([]func(*chromedp.ExecAllocator), error) {
 		return nil, err
 	}
 
-	opts := []chromedp.ExecAllocatorOption{
-		chromedp.UserAgent(agent),
-		chromedp.NoFirstRun,
-		chromedp.NoDefaultBrowserCheck,
+	runHeadless, err := f.GetBool("headless")
+	if err != nil {
+		return nil, err
+	}
+
+	var opts []func(*chromedp.ExecAllocator)
+	if !runHeadless {
+		opts = []chromedp.ExecAllocatorOption{
+			chromedp.UserAgent(agent),
+			chromedp.NoFirstRun,
+			chromedp.NoDefaultBrowserCheck,
+		}
+	} else {
+		opts = []chromedp.ExecAllocatorOption{
+			chromedp.Flag("headless", true),
+			chromedp.Flag("disable-gpu", true),
+		}
 	}
 
 	return opts, nil
