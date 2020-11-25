@@ -1,5 +1,7 @@
 # Purpose
-Command-line tool to fetch HTML Content from dynamic web pages using Go and chromedp
+Command-line tool to interact with HTML Content from dynamic web pages  
+Uses the chromedp library:  
+https://github.com/chromedp/chromedp
 
 ## General:
 ```
@@ -42,26 +44,26 @@ Global Flags:
 ```
 
 ## Command-line args example:
-Run from within headless-shell docker image
+Run from within headless-shell docker image to specify --headless  
+Otherwise, it will need to run by calling into the chrome binary, which must
+be installed on the machine you run this from
 ```
-go-dynamic-fetch -u "https://www.dsw.ca/en/ca/browse/sneakers/" -s ".result-list" -t "10" fetch | cascadia -i -o -c 'div.result-list__tiles' -p Name='div.product-tile__detail-text' -p Price='div.product-price' -d ','
-2020/11/25 17:27:52 Fetching content from: https://www.dsw.ca/en/ca/browse/sneakers/
-2020/11/25 17:27:52 Timeout specified: 10s
-2020/11/25 17:27:52 Using selector: .result-list
+go-dynamic-fetch --headless -u "https://www.dsw.ca/en/ca/browse/sneakers/" -s ".result-list" -t "10" fetc
+h | cascadia -i -o -c 'div.result-list__tiles' -p Name='div.product-tile__detail-text' -p Price='div.product-price' -d ','
+2020/11/25 22:38:52 Fetching content from: https://www.dsw.ca/en/ca/browse/sneakers/
+2020/11/25 22:38:52 Timeout specified: 10s
+2020/11/25 22:38:52 Using selector: .result-list
 Name,Price,
 Summits Sneaker,   $69.99    ,
 Ward Lo Sneaker,  $74.99 $59.98    ,
 Kaptir Sneaker,   $109.99    ,
 Online Only Dighton - Bricelyn Sneaker,   $74.99    ,
 Anzarun Sneaker,   $79.99    ,
-Women's Ward Sneaker,   $79.96    ,
-Nampa - Wyola Sneaker,   $54.99    ,
-Men's Atwood Sneaker,   $74.96    ,
-Fruit Sneaker,   $49.99    ,
-Summits Sneaker,   $69.99    ,
-Men's Atwood Sneaker,   $69.99    ,
-Men's Atwood Sneaker,   $74.96    
+Women's Ward Sneaker,   $79.96    
 ```
 
-## Useful tools to run with:
+## Useful command-line tools to run with:
 https://github.com/suntong/cascadia
+
+## Docker image to run with headless:
+https://hub.docker.com/r/chromedp/headless-shell/
