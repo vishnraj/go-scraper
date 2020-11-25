@@ -1,5 +1,5 @@
 # Purpose
-Command-line tool to interact with HTML Content from dynamic web pages  
+Command-line tool to interact with HTML content retrieved from dynamic web pages  
 Uses the chromedp library:  
 https://github.com/chromedp/chromedp
 
