@@ -52,10 +52,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.go-dynamic-fetch.yaml)")
 
 	// specify all configurable values as options instead
+	// additional flags will be specified in sub-commands
 	rootCmd.PersistentFlags().Bool("headless", false, "Use headless shell")
-	rootCmd.PersistentFlags().StringP("url", "u", "", "URL that you are fetching HTML content for")
 	rootCmd.PersistentFlags().StringP("agent", "a", fetcher.DefaultUserAgent, "User agent to request as - if not specified the default is used")
-	rootCmd.PersistentFlags().StringP("selector", "s", "", "Selector for element to wait for - if not specified we do not wait and just dump static elements")
 	rootCmd.PersistentFlags().IntP("timeout", "t", -1, "Timeout for context - if none is specified a default background context will be used")
 }
 

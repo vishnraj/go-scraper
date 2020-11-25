@@ -46,4 +46,7 @@ var fetchCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(fetchCmd)
+
+	fetchCmd.Flags().StringP("url", "u", "", "URL that you are fetching HTML content for")
+	fetchCmd.Flags().StringP("selector", "s", "", "Selector for element to wait for - if not specified we do not wait and just dump static elements")
 }
