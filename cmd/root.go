@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"fmt"
+	"go-dynamic-fetch/fetcher"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -31,11 +32,8 @@ var cfgFile string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "go-dynamic-fetch",
-	Short: "Fetch dynamic web page content",
-	Long:  `Fetch HTML content from an endpoint for dynamic web pages that use JS`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+	Short: "Provides utility to load dynamic web page content",
+	Long:  `Allows you to request data from dynamic web pages and interact with it`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -50,12 +48,15 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
+	// put everything in a config
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.go-dynamic-fetch.yaml)")
+
+	// specify all configurable values as options instead
 	rootCmd.PersistentFlags().Bool("headless", false, "Use headless shell")
+	rootCmd.PersistentFlags().StringP("url", "u", "", "URL that you are fetching HTML content for")
+	rootCmd.PersistentFlags().StringP("agent", "a", fetcher.DefaultUserAgent, "User agent to request as - if not specified the default is used")
+	rootCmd.PersistentFlags().StringP("selector", "s", "", "Selector for element to wait for - if not specified we do not wait and just dump static elements")
+	rootCmd.PersistentFlags().IntP("timeout", "t", -1, "Timeout for context - if none is specified a default background context will be used")
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -18,7 +18,6 @@ package cmd
 
 import (
 	"fmt"
-
 	"go-dynamic-fetch/fetcher"
 
 	"github.com/spf13/cobra"
@@ -27,8 +26,8 @@ import (
 // fetchCmd represents the fetch command
 var fetchCmd = &cobra.Command{
 	Use:   "fetch",
-	Short: "Fetch the HTML content for the URL",
-	Long:  `Fetches all content from the URL in HTML format`,
+	Short: "Write the HTML content for the URL to stdout",
+	Long:  `Fetches all content from the URL in HTML format and writes it to stdout`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		f := cmd.Flags()
 		v, err := f.GetString("url")
@@ -47,8 +46,4 @@ var fetchCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(fetchCmd)
-	fetchCmd.Flags().StringP("url", "u", "", "URL that you are fetching HTML content for")
-	fetchCmd.Flags().StringP("agent", "a", fetcher.DefaultUserAgent, "User agent to request as - if not specified the default is used")
-	fetchCmd.Flags().StringP("selector", "s", "", "Selector for element to wait for - if not specified we do not wait and just dump static elements")
-	fetchCmd.Flags().IntP("timeout", "t", -1, "Timeout for context - if none is specified a default background context will be used")
 }
