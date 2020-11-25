@@ -48,10 +48,11 @@ Run from within headless-shell docker image to specify --headless
 Otherwise, it will need to run by calling into the chrome binary, which must
 be installed on the machine you run this from
 ```
-go-dynamic-fetch --headless -t "10" fetch -u "https://www.dsw.ca/en/ca/browse/sneakers/" -s ".result-list" | cascadia -i -o -c 'div.result-list__tiles' -p Name='div.product-tile__detail-text' -p Price='div.product-price' -d ','
-2020/11/25 23:24:36 Fetching content from: https://www.dsw.ca/en/ca/browse/sneakers/
-2020/11/25 23:24:36 Timeout specified: 10s
-2020/11/25 23:24:36 Using selector: .result-list
+go-dynamic-fetch --headless -t '10' fetch -u 'https://www.dsw.ca/en/ca/browse/sneakers/' -s '.result-list
+' | cascadia -i -o -c 'div.result-list__tiles' -p Name='div.product-tile__detail-text' -p Price='div.product-price' -d ','
+2020/11/25 23:28:19 Fetching content from: https://www.dsw.ca/en/ca/browse/sneakers/
+2020/11/25 23:28:19 Timeout specified: 10s
+2020/11/25 23:28:19 Using selector: .result-list
 Name,Price,
 Summits Sneaker,   $69.99    ,
 Ward Lo Sneaker,  $74.99 $59.98    ,
