@@ -2,17 +2,100 @@ package fetcher
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
+	"net/smtp"
+	"os"
 	"time"
 
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/chromedp"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-// DefaultUserAgent The default user agent to send request as
-const DefaultUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36"
+const (
+	// DefaultInterval to wait (in seconds) when watching a selector
+	DefaultInterval = 30
+
+	// DefaultSubject to send email with
+	DefaultSubject = "Go-Dynamic-Fetch Watcher"
+
+	// DefaultUserAgent The default user agent to send request as
+	DefaultUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36"
+)
+
+type watchFunc interface {
+	Execute(metadata string)
+}
+
+type emailWatchFunc struct {
+	senderPassword string
+	fromEmail      string
+	toEmail        string
+	toSubject      string
+}
+
+func (e emailWatchFunc) Execute(metadata string) {
+	smtpHost := "smtp.gmail.com"
+	smtpPort := "465"
+
+	auth := smtp.PlainAuth("", e.fromEmail, e.senderPassword, smtpHost)
+	tlsconfig := &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         smtpHost,
+	}
+
+	conn, err := tls.Dial("tcp", smtpHost+":"+smtpPort, tlsconfig)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	c, err := smtp.NewClient(conn, smtpHost)
+	defer c.Quit()
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if err = c.Auth(auth); err != nil {
+		log.Println(err)
+		return
+	}
+	if err = c.Mail(e.fromEmail); err != nil {
+		log.Println(err)
+		return
+	}
+	if err = c.Rcpt(e.toEmail); err != nil {
+		log.Println(err)
+		return
+	}
+	w, err := c.Data()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	message := "To: " + e.toEmail + "\r\n" +
+		"Subject: " + e.toSubject + "\r\n" +
+		"\r\n" +
+		metadata + "\r\n"
+
+	_, err = w.Write([]byte(message))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	err = w.Close()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	log.Printf("Emailed %s successfully\n", e.toEmail)
+}
 
 func setOpt(cmd *cobra.Command) ([]func(*chromedp.ExecAllocator), error) {
 	f := cmd.Flags()
@@ -43,7 +126,61 @@ func setOpt(cmd *cobra.Command) ([]func(*chromedp.ExecAllocator), error) {
 	return opts, nil
 }
 
-func fetch(ctx context.Context, url string, waitSelector string, textSelector string) (string, error) {
+func createChromeContext(cmd *cobra.Command, opts []func(*chromedp.ExecAllocator)) (context.Context, context.CancelFunc) {
+	var ctx context.Context
+	var cancel context.CancelFunc
+
+	f := cmd.Flags()
+	ctx = context.Background()
+	timeout, _ := f.GetInt("timeout")
+	if timeout > 0 {
+		log.Printf("Timeout specified: %ds\n", timeout)
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+	}
+
+	ctx, _ = chromedp.NewExecAllocator(ctx, opts...)
+	ctx, cancel = chromedp.NewContext(ctx)
+
+	return ctx, cancel
+}
+
+func execute(cmd *cobra.Command, url string, waitSelector string, actionFunc chromedp.ActionFunc) error {
+	opts, err := setOpt(cmd)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := createChromeContext(cmd, opts)
+	defer cancel()
+
+	actions := make([]chromedp.Action, 0)
+	actions = append(actions, chromedp.Navigate(url))
+	if len(waitSelector) != 0 {
+		actions = append(actions, chromedp.WaitVisible(waitSelector, chromedp.ByQuery))
+	}
+	if actionFunc != nil {
+		actions = append(actions, actionFunc)
+	}
+
+	err = chromedp.Run(ctx, actions...)
+	return err
+}
+
+func checkAndPerformAction(cmd *cobra.Command, urls []string, selectors []string, postAction watchFunc) {
+	for i := 0; i < len(urls); i++ {
+		if err := execute(cmd,
+			urls[i],
+			selectors[i],
+			nil,
+		); err == nil {
+			postAction.Execute(urls[i])
+		} else {
+			log.Printf("Data for %s was not available during this check - no email sent - received error %s\n", urls[i], err.Error())
+		}
+	}
+}
+
+func fetch(cmd *cobra.Command, url string, waitSelector string, textSelector string) (string, error) {
 	var res string
 	var actionFunc chromedp.ActionFunc
 
@@ -64,50 +201,34 @@ func fetch(ctx context.Context, url string, waitSelector string, textSelector st
 		})
 	}
 
-	actions := make([]chromedp.Action, 0)
-	actions = append(actions, chromedp.Navigate(url))
-	if len(waitSelector) != 0 {
-		actions = append(actions, chromedp.WaitVisible(waitSelector, chromedp.ByQuery))
-	}
-	actions = append(actions, actionFunc)
-
-	if err := chromedp.Run(ctx,
-		actions...,
-	); err != nil {
+	err := execute(cmd, url, waitSelector, actionFunc)
+	if err != nil {
 		return "", err
 	}
 
 	return res, nil
 }
 
+func watch(cmd *cobra.Command, urls []string, selectors []string, interval int, postAction watchFunc) {
+	checkAndPerformAction(cmd, urls, selectors, postAction)
+
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
+	for {
+		select {
+		case _ = <-ticker.C:
+			checkAndPerformAction(cmd, urls, selectors, postAction)
+		}
+	}
+}
+
 // PrintContent fetches HTML content
 func PrintContent(cmd *cobra.Command) error {
-	opts, err := setOpt(cmd)
-	if err != nil {
-		return err
-	}
-
 	f := cmd.Flags()
 	url, _ := f.GetString("url")
 	waitSelector, _ := f.GetString("wait-selector")
 	textSelector, _ := f.GetString("text-selector")
-	timeout, _ := f.GetInt("timeout")
 
 	log.Printf("Fetching content from: %s\n", url)
-
-	var ctx context.Context
-	var cancel context.CancelFunc
-	ctx = context.Background()
-	if timeout > 0 {
-		log.Printf("Timeout specified: %ds\n", timeout)
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
-	}
-
-	ctx, cancel = chromedp.NewExecAllocator(ctx, opts...)
-	defer cancel()
-
-	ctx, cancel = chromedp.NewContext(ctx)
-	defer cancel()
 
 	if len(waitSelector) != 0 {
 		log.Printf("Waiting on selector: %s\n", waitSelector)
@@ -116,9 +237,49 @@ func PrintContent(cmd *cobra.Command) error {
 		log.Printf("Will print text for %s\n", textSelector)
 	}
 
-	res, err := fetch(ctx, url, waitSelector, textSelector)
+	res, err := fetch(cmd, url, waitSelector, textSelector)
 	if err == nil {
 		fmt.Println(res)
 	}
 	return err
+}
+
+// EmailContent will watch content and take action if content is available
+func EmailContent(cmd *cobra.Command) error {
+	f := cmd.Flags()
+	urls, _ := f.GetStringSlice("urls")
+	selectors, _ := f.GetStringSlice("selectors")
+
+	subject, _ := f.GetString("subject")
+	from, _ := f.GetString("from")
+	to, _ := f.GetString("to")
+	interval, _ := f.GetInt("interval")
+
+	log.Printf("Sending with subject %s\n", subject)
+	log.Printf("Sending from email %s\n", from)
+	log.Printf("Sending to email %s\n", to)
+	log.Printf("Will check for updates every %d seconds\n", interval)
+
+	envPassword, _ := f.GetString("sender-password")
+	password := os.Getenv(envPassword)
+	if len(password) == 0 {
+		// if set as a key value
+		password = viper.GetString("email_password")
+		if len(password) == 0 {
+			return fmt.Errorf("We require a sender email password environment variable")
+		}
+	}
+
+	// watch will just run until we choose to terminate
+	// doesn't return content like fetch
+	postAction := emailWatchFunc{
+		fromEmail:      from,
+		toEmail:        to,
+		toSubject:      subject,
+		senderPassword: password,
+	}
+
+	watch(cmd, urls, selectors, interval, postAction)
+
+	return nil
 }
