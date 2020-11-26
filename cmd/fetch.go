@@ -40,7 +40,7 @@ var fetchCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return fetcher.GetContent(cmd)
+		return fetcher.PrintContent(cmd)
 	},
 }
 
@@ -48,5 +48,6 @@ func init() {
 	rootCmd.AddCommand(fetchCmd)
 
 	fetchCmd.Flags().StringP("url", "u", "", "URL that you are fetching HTML content for")
-	fetchCmd.Flags().StringP("selector", "s", "", "Selector for element to wait for - if not specified we do not wait and just dump static elements")
+	fetchCmd.Flags().String("wait-selector", "", "Selector for element to wait for - if not specified we do not wait and just dump static elements")
+	fetchCmd.Flags().String("text-selector", "", "Gets and prints text for the desired selector and if not specified dump all content retrieved")
 }

@@ -43,53 +43,45 @@ func setOpt(cmd *cobra.Command) ([]func(*chromedp.ExecAllocator), error) {
 	return opts, nil
 }
 
-func noWaitFetch(ctx context.Context, url string) error {
+func fetch(ctx context.Context, url string, waitSelector string, textSelector string) (string, error) {
 	var res string
+	var actionFunc chromedp.ActionFunc
 
-	if err := chromedp.Run(ctx,
-		chromedp.Navigate(url),
-		chromedp.ActionFunc(func(ctx context.Context) error {
+	if len(textSelector) != 0 {
+		actionFunc = chromedp.ActionFunc(func(ctx context.Context) error {
+			err := chromedp.Text(textSelector, &res).Do(ctx)
+			return err
+		})
+	} else {
+		actionFunc = chromedp.ActionFunc(func(ctx context.Context) error {
 			node, err := dom.GetDocument().Do(ctx)
 			if err != nil {
 				return err
 			}
+
 			res, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
 			return err
-		}),
-	); err != nil {
-		return err
+		})
 	}
 
-	fmt.Println(res)
-
-	return nil
-}
-
-func waitFetch(ctx context.Context, url string, selector string) error {
-	var res string
+	actions := make([]chromedp.Action, 0)
+	actions = append(actions, chromedp.Navigate(url))
+	if len(waitSelector) != 0 {
+		actions = append(actions, chromedp.WaitVisible(waitSelector, chromedp.ByQuery))
+	}
+	actions = append(actions, actionFunc)
 
 	if err := chromedp.Run(ctx,
-		chromedp.Navigate(url),
-		chromedp.WaitVisible(selector, chromedp.ByQuery),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			node, err := dom.GetDocument().Do(ctx)
-			if err != nil {
-				return err
-			}
-			res, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
-			return err
-		}),
+		actions...,
 	); err != nil {
-		return err
+		return "", err
 	}
 
-	fmt.Println(res)
-
-	return nil
+	return res, nil
 }
 
-// GetContent fetches HTML content
-func GetContent(cmd *cobra.Command) error {
+// PrintContent fetches HTML content
+func PrintContent(cmd *cobra.Command) error {
 	opts, err := setOpt(cmd)
 	if err != nil {
 		return err
@@ -97,7 +89,8 @@ func GetContent(cmd *cobra.Command) error {
 
 	f := cmd.Flags()
 	url, _ := f.GetString("url")
-	selector, _ := f.GetString("selector")
+	waitSelector, _ := f.GetString("wait-selector")
+	textSelector, _ := f.GetString("text-selector")
 	timeout, _ := f.GetInt("timeout")
 
 	log.Printf("Fetching content from: %s\n", url)
@@ -116,10 +109,16 @@ func GetContent(cmd *cobra.Command) error {
 	ctx, cancel = chromedp.NewContext(ctx)
 	defer cancel()
 
-	if selector == "" {
-		return noWaitFetch(ctx, url)
+	if len(waitSelector) != 0 {
+		log.Printf("Waiting on selector: %s\n", waitSelector)
+	}
+	if len(textSelector) != 0 {
+		log.Printf("Will print text for %s\n", textSelector)
 	}
 
-	log.Printf("Using selector: %s\n", selector)
-	return waitFetch(ctx, url, selector)
+	res, err := fetch(ctx, url, waitSelector, textSelector)
+	if err == nil {
+		fmt.Println(res)
+	}
+	return err
 }
