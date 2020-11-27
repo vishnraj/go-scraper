@@ -15,9 +15,7 @@ limitations under the License.
 */
 package main
 
-import (
-	"go-dynamic-fetch/cmd"
-)
+import "github.com/vishnraj/go-dynamic-fetch/cmd"
 
 func main() {
 	cmd.Execute()

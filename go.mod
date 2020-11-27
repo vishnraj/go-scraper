@@ -1,4 +1,4 @@
-module go-dynamic-fetch
+module github.com/vishnraj/go-dynamic-fetch
 
 go 1.15
 

@@ -18,7 +18,8 @@ package cmd
 
 import (
 	"fmt"
-	"go-dynamic-fetch/fetcher"
+
+	"github.com/vishnraj/go-dynamic-fetch/fetcher"
 
 	"github.com/spf13/cobra"
 )
