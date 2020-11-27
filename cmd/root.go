@@ -64,7 +64,7 @@ func initConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Find home directory.
+		// Find working directory.
 		home, err := os.Getwd()
 		if err != nil {
 			fmt.Println(err)
