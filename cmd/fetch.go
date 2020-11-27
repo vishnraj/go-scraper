@@ -22,6 +22,7 @@ import (
 	"github.com/vishnraj/go-dynamic-fetch/fetcher"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // fetchCmd represents the fetch command
@@ -30,11 +31,9 @@ var fetchCmd = &cobra.Command{
 	Short: "Write the HTML content for the URL to stdout",
 	Long:  `Fetches all content from the URL in HTML format and writes it to stdout`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		f := cmd.Flags()
-		v, err := f.GetString("url")
-		if err != nil {
-			return err
-		} else if v == "" {
+		viper.BindPFlags(cmd.Flags())
+		v := viper.GetString("url")
+		if v == "" {
 			return fmt.Errorf("We require a non-empty URL")
 		}
 

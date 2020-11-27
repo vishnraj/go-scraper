@@ -77,11 +77,11 @@ Usage:
   go-dynamic-fetch watch email [flags]
 
 Flags:
-      --from string              Email address to send message from
-  -h, --help                     help for email
-      --sender-password string   Password for the from email specified (specify as an environment variable)
-      --subject string           Subject to be specified (default "Go-Dynamic-Fetch Watcher")
-      --to string                Email address to send message to
+      --from string                  Email address to send message from
+  -h, --help                         help for email
+      --sender-password-env string   Password for the from email specified (specify as an environment variable)
+      --subject string               Subject to be specified (default "Go-Dynamic-Fetch Watcher")
+      --to string                    Email address to send message to
 
 Global Flags:
   -a, --agent string        User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
@@ -129,7 +129,7 @@ Add to cart
 
 ## Command-line args watch and email example:
 ```
-go-dynamic-fetch --headless -t 10 watch --urls 'https://walmart.com/ip/Spider-Man-Miles-Morales-Launch-Edition-Sony-PlayStation-5/238397352' --selectors 'div.prod-product-cta-add-to-cart.display-inline-block' -i 30 email --from 'vrajendrantester@gmail.com' --to 'vishnu.raj.1993@gmail.com' --sender-password EMAIL_PASSWORD
+go-dynamic-fetch --headless -t 10 watch --urls 'https://walmart.com/ip/Spider-Man-Miles-Morales-Launch-Edition-Sony-PlayStation-5/238397352' --selectors 'div.prod-product-cta-add-to-cart.display-inline-block' -i 30 email --from 'vrajendrantester@gmail.com' --to 'vishnu.raj.1993@gmail.com' --sender-password-env EMAIL_PASSWORD
 2020/11/26 22:43:44 Sending with subject Go-Dynamic-Fetch Watcher
 2020/11/26 22:43:44 Sending from email vrajendrantester@gmail.com
 2020/11/26 22:43:44 Sending to email vishnu.raj.1993@gmail.com

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/smtp"
-	"os"
 	"time"
 
 	"github.com/chromedp/cdproto/dom"
@@ -98,16 +97,10 @@ func (e emailWatchFunc) Execute(metadata string) {
 }
 
 func setOpt(cmd *cobra.Command) ([]func(*chromedp.ExecAllocator), error) {
-	f := cmd.Flags()
-	agent, err := f.GetString("agent")
-	if err != nil {
-		return nil, err
-	}
+	viper.BindPFlags(cmd.Flags())
+	agent := viper.GetString("agent")
 
-	runHeadless, err := f.GetBool("headless")
-	if err != nil {
-		return nil, err
-	}
+	runHeadless := viper.GetBool("headless")
 
 	var opts []func(*chromedp.ExecAllocator)
 	if !runHeadless {
@@ -130,9 +123,9 @@ func createChromeContext(cmd *cobra.Command, opts []func(*chromedp.ExecAllocator
 	var ctx context.Context
 	var cancel context.CancelFunc
 
-	f := cmd.Flags()
+	viper.BindPFlags(cmd.Flags())
 	ctx = context.Background()
-	timeout, _ := f.GetInt("timeout")
+	timeout := viper.GetInt("timeout")
 	if timeout > 0 {
 		log.Printf("Timeout specified: %ds\n", timeout)
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
@@ -223,10 +216,10 @@ func watch(cmd *cobra.Command, urls []string, selectors []string, interval int, 
 
 // PrintContent fetches HTML content
 func PrintContent(cmd *cobra.Command) error {
-	f := cmd.Flags()
-	url, _ := f.GetString("url")
-	waitSelector, _ := f.GetString("wait-selector")
-	textSelector, _ := f.GetString("text-selector")
+	viper.BindPFlags(cmd.Flags())
+	url := viper.GetString("url")
+	waitSelector := viper.GetString("wait-selector")
+	textSelector := viper.GetString("text-selector")
 
 	log.Printf("Fetching content from: %s\n", url)
 
@@ -245,30 +238,24 @@ func PrintContent(cmd *cobra.Command) error {
 }
 
 // EmailContent will watch content and take action if content is available
-func EmailContent(cmd *cobra.Command) error {
-	f := cmd.Flags()
-	urls, _ := f.GetStringSlice("urls")
-	selectors, _ := f.GetStringSlice("selectors")
+func EmailContent(cmd *cobra.Command) {
+	viper.BindPFlags(cmd.Flags())
+	urls := viper.GetStringSlice("urls")
+	selectors := viper.GetStringSlice("selectors")
 
-	subject, _ := f.GetString("subject")
-	from, _ := f.GetString("from")
-	to, _ := f.GetString("to")
-	interval, _ := f.GetInt("interval")
+	subject := viper.GetString("subject")
+	from := viper.GetString("from")
+	to := viper.GetString("to")
+	interval := viper.GetInt("interval")
+
+	envPassword := viper.GetString("sender-password-env")
+	viper.BindEnv(envPassword)
+	password := viper.GetString(envPassword)
 
 	log.Printf("Sending with subject %s\n", subject)
 	log.Printf("Sending from email %s\n", from)
 	log.Printf("Sending to email %s\n", to)
 	log.Printf("Will check for updates every %d seconds\n", interval)
-
-	envPassword, _ := f.GetString("sender-password")
-	password := os.Getenv(envPassword)
-	if len(password) == 0 {
-		// if set as a key value
-		password = viper.GetString("email_password")
-		if len(password) == 0 {
-			return fmt.Errorf("We require a sender email password environment variable")
-		}
-	}
 
 	// watch will just run until we choose to terminate
 	// doesn't return content like fetch
@@ -280,6 +267,4 @@ func EmailContent(cmd *cobra.Command) error {
 	}
 
 	watch(cmd, urls, selectors, interval, postAction)
-
-	return nil
 }

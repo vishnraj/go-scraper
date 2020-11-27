@@ -22,6 +22,7 @@ import (
 	"github.com/vishnraj/go-dynamic-fetch/fetcher"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // emailCmd represents the email command
@@ -30,26 +31,33 @@ var emailCmd = &cobra.Command{
 	Short: "Emails if the desired criteria is met in watch",
 	Long:  `This is on of the actions that can be taken for watch - it will send an email from the provided email to the receipient email`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		f := cmd.Flags()
-
-		from, err := f.GetString("from")
-		if err != nil {
-			return err
-		} else if from == "" {
+		viper.BindPFlags(cmd.Flags())
+		from := viper.GetString("from")
+		if from == "" {
 			return fmt.Errorf("Please specify from email address")
 		}
 
-		to, err := f.GetString("to")
-		if err != nil {
-			return err
-		} else if to == "" {
+		to := viper.GetString("to")
+		if to == "" {
 			return fmt.Errorf("Please specify to email address")
+		}
+
+		envPassword := viper.GetString("sender-password-env")
+		if len(envPassword) == 0 {
+			return fmt.Errorf("We require a sender email password environment variable")
+		}
+		if err := viper.BindEnv(envPassword); err != nil {
+			return err
+		}
+		password := viper.GetString(envPassword)
+		if len(password) == 0 {
+			return fmt.Errorf("We require a non-empty sender email password")
 		}
 
 		return nil
 	},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return fetcher.EmailContent(cmd)
+	Run: func(cmd *cobra.Command, args []string) {
+		fetcher.EmailContent(cmd)
 	},
 }
 
@@ -59,5 +67,5 @@ func init() {
 	emailCmd.Flags().String("subject", fetcher.DefaultSubject, "Subject to be specified")
 	emailCmd.Flags().String("from", "", "Email address to send message from")
 	emailCmd.Flags().String("to", "", "Email address to send message to")
-	emailCmd.Flags().String("sender-password", "", "Password for the from email specified (specify as an environment variable)")
+	emailCmd.Flags().String("sender-password-env", "", "Password for the from email specified (specify as an environment variable)")
 }

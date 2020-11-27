@@ -22,6 +22,7 @@ import (
 	"github.com/vishnraj/go-dynamic-fetch/fetcher"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // watchCmd represents the watch command
@@ -30,18 +31,14 @@ var watchCmd = &cobra.Command{
 	Short: "Watch URL(s) and take an action if criteria is met",
 	Long:  `This command provides sub-commands that we can run to take a particular action if the selectors (in the order of URLs specified) are found on the particular web-page (for the timeout set) and it will keep watching for the selectors at the set interval`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		f := cmd.Flags()
-		urls, err := f.GetStringSlice("urls")
-		if err != nil {
-			return err
-		} else if urls == nil {
+		viper.BindPFlags(cmd.Flags())
+		urls := viper.GetStringSlice("urls")
+		if urls == nil {
 			return fmt.Errorf("We require a non-empty comma separated slice of URL(s)")
 		}
 
-		selectors, err := f.GetStringSlice("selectors")
-		if err != nil {
-			return err
-		} else if selectors == nil {
+		selectors := viper.GetStringSlice("selectors")
+		if selectors == nil {
 			return fmt.Errorf("We require a non-empty comma separated slice of selector(s)")
 		}
 
