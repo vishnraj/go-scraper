@@ -29,7 +29,7 @@ import (
 var emailCmd = &cobra.Command{
 	Use:   "email",
 	Short: "Emails if the desired criteria is met in watch",
-	Long:  `This is on of the actions that can be taken for watch - it will send an email from the provided email to the receipient email`,
+	Long:  `This is one of the actions that can be taken for watch - it will send an email from the provided sender email to the receipient email`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
 		from := viper.GetString("from")

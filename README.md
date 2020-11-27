@@ -71,7 +71,7 @@ Global Flags:
 
 ## Email
 ```
-This is on of the actions that can be taken for watch - it will send an email from the provided email to the receipient email
+This is one of the actions that can be taken for watch - it will send an email from the provided sender email to the receipient email
 
 Usage:
   go-dynamic-fetch watch email [flags]
