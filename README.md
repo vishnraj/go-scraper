@@ -5,7 +5,7 @@ https://github.com/chromedp/chromedp
 
 # Usage
 
-## General:
+## General
 ```
 Allows you to request data from dynamic web pages and interact with it
 
@@ -26,7 +26,7 @@ Flags:
 Use "go-dynamic-fetch [command] --help" for more information about a command.
 ```
 
-## Fetch:
+## Fetch
 ```
 Fetches all content from the URL in HTML format and writes it to stdout
 
@@ -44,6 +44,53 @@ Global Flags:
       --config string   config file (default is $HOME/.go-dynamic-fetch.yaml)
       --headless        Use headless shell
   -t, --timeout int     Timeout for context - if none is specified a default background context will be used (default -1)
+```
+
+## Watch
+```
+This command provides sub-commands that we can run to take a particular action if the selectors (in the order of URLs specified) are found on the particular web-page (for the timeout set) and it will keep watching for the selectors at the set interval
+
+Usage:
+  go-dynamic-fetch watch [command]
+
+Available Commands:
+  email       Emails if the desired criteria is met in watch
+
+Flags:
+  -h, --help                help for watch
+  -i, --interval int        Interval (in seconds) to wait in between watching a selector (default 30)
+      --selectors strings   All selectors, in order of URLs passed in, to wait for
+      --urls strings        All URLs to watch
+
+Global Flags:
+  -a, --agent string    User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
+      --config string   config file (default is $HOME/.go-dynamic-fetch.yaml)
+      --headless        Use headless shell
+  -t, --timeout int     Timeout for context - if none is specified a default background context will be used (default -1)
+```
+
+## Email
+```
+This is on of the actions that can be taken for watch - it will send an email from the provided email to the receipient email
+
+Usage:
+  go-dynamic-fetch watch email [flags]
+
+Flags:
+      --from string              Email address to send message from
+  -h, --help                     help for email
+      --sender-password string   Password for the from email specified (specify as an environment variable)
+      --subject string           Subject to be specified (default "Go-Dynamic-Fetch Watcher")
+      --to string                Email address to send message to
+
+Global Flags:
+  -a, --agent string        User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
+      --config string       config file (default is $HOME/.go-dynamic-fetch.yaml)
+      --headless            Use headless shell
+  -i, --interval int        Interval (in seconds) to wait in between watching a selector (default 30)
+      --selectors strings   All selectors, in order of URLs passed in, to wait for
+  -t, --timeout int         Timeout for context - if none is specified a default background context will be used (default -1)
+      --urls strings        All URLs to watch
 ```
 
 # Examples
@@ -78,6 +125,19 @@ n.spin-button-children'
 2020/11/26 06:03:03 Waiting on selector: div.prod-product-cta-add-to-cart.display-inline-block
 2020/11/26 06:03:03 Will print text for span.spin-button-children
 Add to cart
+```
+
+## Command-line args watch and email example:
+```
+go-dynamic-fetch --headless -t 10 watch --urls 'https://walmart.com/ip/Spider-Man-Miles-Morales-Launch-Edition-Sony-PlayStation-5/238397352' --selectors 'div.prod-product-cta-add-to-cart.display-inline-block' -i 30 email --from 'vrajendrantester@gmail.com' --to 'vishnu.raj.1993@gmail.com' --sender-password EMAIL_PASSWORD
+2020/11/26 22:43:44 Sending with subject Go-Dynamic-Fetch Watcher
+2020/11/26 22:43:44 Sending from email vrajendrantester@gmail.com
+2020/11/26 22:43:44 Sending to email vishnu.raj.1993@gmail.com
+2020/11/26 22:43:44 Will check for updates every 30 seconds
+2020/11/26 22:43:44 Timeout specified: 10s
+2020/11/26 22:43:50 Emailed vishnu.raj.1993@gmail.com successfully
+2020/11/26 22:44:20 Timeout specified: 10s
+2020/11/26 22:44:27 Emailed vishnu.raj.1993@gmail.com successfully
 ```
 
 # Other

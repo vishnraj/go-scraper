@@ -26,8 +26,8 @@ import (
 // watchCmd represents the watch command
 var watchCmd = &cobra.Command{
 	Use:   "watch",
-	Short: "Watch a URL(s) and email if criteria is met",
-	Long:  `User can set selector(s) that is to be observed/waited on (or both) and alert if the requirements are met through an email`,
+	Short: "Watch URL(s) and take an action if criteria is met",
+	Long:  `This command provides sub-commands that we can run to take a particular action if the selectors (in the order of URLs specified) are found on the particular web-page (for the timeout set) and it will keep watching for the selectors at the set interval`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		f := cmd.Flags()
 		urls, err := f.GetStringSlice("urls")
