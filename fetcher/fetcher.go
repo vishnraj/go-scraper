@@ -104,15 +104,19 @@ func setOpt(cmd *cobra.Command) ([]func(*chromedp.ExecAllocator), error) {
 
 	var opts []func(*chromedp.ExecAllocator)
 	if !runHeadless {
+		log.Println("Running without headless enabled")
 		opts = []chromedp.ExecAllocatorOption{
 			chromedp.UserAgent(agent),
 			chromedp.NoFirstRun,
 			chromedp.NoDefaultBrowserCheck,
 		}
 	} else {
+		log.Println("Running without headless enabled")
 		opts = []chromedp.ExecAllocatorOption{
+			chromedp.UserAgent(agent),
 			chromedp.Flag("headless", true),
 			chromedp.Flag("disable-gpu", true),
+			chromedp.Flag("no-sandbox", true),
 		}
 	}
 
