@@ -111,7 +111,7 @@ func setOpt(cmd *cobra.Command) ([]func(*chromedp.ExecAllocator), error) {
 			chromedp.NoDefaultBrowserCheck,
 		}
 	} else {
-		log.Println("Running without headless enabled")
+		log.Println("Running in headless mode")
 		opts = []chromedp.ExecAllocatorOption{
 			chromedp.UserAgent(agent),
 			chromedp.Flag("headless", true),
