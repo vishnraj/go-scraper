@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"log"
 	"net/smtp"
 	"time"
 
+	"github.com/apsdehal/go-logger"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/chromedp"
 	"github.com/spf13/cobra"
@@ -30,6 +30,8 @@ var (
 		"fetch": &fetchExecutor{},
 		"watch": &watchExecutor{},
 	}
+
+	gLog *logger.Logger
 )
 
 type actionGenerator interface {
@@ -166,7 +168,7 @@ func (f fetchExecutor) Execute(cmd *cobra.Command) {
 	for i, a := range f.actions {
 		err := run(cmd, a)
 		if err != nil {
-			log.Printf("For URL [%d], received error [%v]", i, err)
+			Log().Errorf("For URL [%d], received error [%v]", i, err)
 		}
 	}
 }
@@ -175,7 +177,7 @@ func (w *watchExecutor) Init(cmd *cobra.Command, actionGens [][]actionGenerator)
 	viper.BindPFlags(cmd.Flags())
 
 	w.interval = viper.GetInt("interval")
-	log.Printf("Will check for updates every %d seconds\n", w.interval)
+	Log().Infof("Will check for updates every %d seconds\n", w.interval)
 
 	for _, gens := range actionGens {
 		a := make([]chromedp.Action, 0)
@@ -190,7 +192,7 @@ func (w watchExecutor) Execute(cmd *cobra.Command) {
 	for i, a := range w.actions {
 		err := run(cmd, a)
 		if err != nil {
-			log.Printf("Data for %s was not available during this check - no email sent - received error %s\n", w.urls[i], err.Error())
+			Log().Errorf("Data for %s was not available during this check - no email sent - received error %s\n", w.urls[i], err.Error())
 		}
 	}
 	ticker := time.NewTicker(time.Duration(w.interval) * time.Second)
@@ -200,7 +202,7 @@ func (w watchExecutor) Execute(cmd *cobra.Command) {
 			for i, a := range w.actions {
 				err := run(cmd, a)
 				if err != nil {
-					log.Printf("Data for %s was not available during this check - no email sent - received error %s\n", w.urls[i], err.Error())
+					Log().Errorf("Data for %s was not available during this check - no email sent - received error %s\n", w.urls[i], err.Error())
 				}
 			}
 		}
@@ -219,7 +221,7 @@ func (e emailWatchFunc) Execute(metadata string) {
 
 	conn, err := tls.Dial("tcp", smtpHost+":"+smtpPort, tlsconfig)
 	if err != nil {
-		log.Println(err)
+		Log().Errorf("%v", err)
 		return
 	}
 
@@ -227,24 +229,24 @@ func (e emailWatchFunc) Execute(metadata string) {
 	defer c.Quit()
 
 	if err != nil {
-		log.Println(err)
+		Log().Errorf("%v", err)
 		return
 	}
 	if err = c.Auth(auth); err != nil {
-		log.Println(err)
+		Log().Errorf("%v", err)
 		return
 	}
 	if err = c.Mail(e.fromEmail); err != nil {
-		log.Println(err)
+		Log().Errorf("%v", err)
 		return
 	}
 	if err = c.Rcpt(e.toEmail); err != nil {
-		log.Println(err)
+		Log().Errorf("%v", err)
 		return
 	}
 	w, err := c.Data()
 	if err != nil {
-		log.Println(err)
+		Log().Errorf("%v", err)
 		return
 	}
 
@@ -255,16 +257,16 @@ func (e emailWatchFunc) Execute(metadata string) {
 
 	_, err = w.Write([]byte(message))
 	if err != nil {
-		log.Println(err)
+		Log().Errorf("%v", err)
 		return
 	}
 	err = w.Close()
 	if err != nil {
-		log.Println(err)
+		Log().Errorf("%v", err)
 		return
 	}
 
-	log.Printf("Emailed %s successfully\n", e.toEmail)
+	Log().Infof("Emailed %s successfully\n", e.toEmail)
 }
 
 func setOpt(cmd *cobra.Command) ([]func(*chromedp.ExecAllocator), error) {
@@ -275,14 +277,14 @@ func setOpt(cmd *cobra.Command) ([]func(*chromedp.ExecAllocator), error) {
 
 	var opts []func(*chromedp.ExecAllocator)
 	if !runHeadless {
-		log.Println("Running without headless enabled")
+		Log().Info("Running without headless enabled")
 		opts = []chromedp.ExecAllocatorOption{
 			chromedp.UserAgent(agent),
 			chromedp.NoFirstRun,
 			chromedp.NoDefaultBrowserCheck,
 		}
 	} else {
-		log.Println("Running in headless mode")
+		Log().Info("Running in headless mode")
 		opts = []chromedp.ExecAllocatorOption{
 			chromedp.UserAgent(agent),
 			chromedp.Flag("headless", true),
@@ -302,7 +304,7 @@ func createChromeContext(cmd *cobra.Command, opts []func(*chromedp.ExecAllocator
 	ctx = context.Background()
 	timeout := viper.GetInt("timeout")
 	if timeout > 0 {
-		log.Printf("Timeout specified: %ds\n", timeout)
+		Log().Infof("Timeout specified: %ds\n", timeout)
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	}
 
@@ -335,21 +337,34 @@ func addWaitActions(urls []string, selectors []string, actionGens [][]actionGene
 	}
 }
 
+// Log creates a logger that we can use in the app
+func Log() *logger.Logger {
+	if gLog == nil {
+		var err error
+		if gLog, err = logger.New(0); err != nil {
+			panic(err)
+		}
+		gLog.SetFormat("[%{level}] [%{time}] %{filename}:%{line}: %{message}")
+	}
+
+	return gLog
+}
+
 // PrintContent fetches HTML content
 func PrintContent(cmd *cobra.Command) {
 	viper.BindPFlags(cmd.Flags())
 	u := viper.GetString("url")
 	w := viper.GetString("wait-selector")
 
-	log.Printf("Fetching content from: %s\n", u)
+	Log().Infof("Fetching content from: %s\n", u)
 	if len(w) != 0 {
-		log.Printf("Waiting on selector: %s\n", w)
+		Log().Infof("Waiting on selector: %s\n", w)
 	}
 
 	t := viper.GetString("text-selector")
 
 	if len(t) != 0 {
-		log.Printf("Will print text for %s\n", t)
+		Log().Infof("Will print text for %s\n", t)
 	}
 
 	p := make(chan dumpData)
@@ -381,12 +396,12 @@ func EmailContent(cmd *cobra.Command) {
 	viper.BindEnv(envPassword)
 	password := viper.GetString(envPassword)
 
-	log.Printf("Sending with subject %s\n", subject)
-	log.Printf("Sending from email %s\n", from)
-	log.Printf("Sending to email %s\n", to)
+	Log().Infof("Sending with subject %s\n", subject)
+	Log().Infof("Sending from email %s\n", from)
+	Log().Infof("Sending to email %s\n", to)
 
-	log.Printf("Watching URLs %v\n", urls)
-	log.Printf("Waiting on selectors %v\n", selectors)
+	Log().Infof("Watching URLs %v\n", urls)
+	Log().Infof("Waiting on selectors %v\n", selectors)
 
 	p := make(chan emailData)
 	postAction := emailWatchFunc{
