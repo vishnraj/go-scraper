@@ -57,10 +57,10 @@ Available Commands:
   email       Emails if the desired criteria is met in watch
 
 Flags:
-  -h, --help                help for watch
-  -i, --interval int        Interval (in seconds) to wait in between watching a selector (default 30)
-      --selectors strings   All selectors, in order of URLs passed in, to wait for
-      --urls strings        All URLs to watch
+  -h, --help                     help for watch
+  -i, --interval int             Interval (in seconds) to wait in between watching a selector (default 30)
+      --wait-selectors strings   All selectors, in order of URLs passed in, to wait for
+      --urls strings             All URLs to watch
 
 Global Flags:
   -a, --agent string    User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
@@ -84,13 +84,13 @@ Flags:
       --to string                    Email address to send message to
 
 Global Flags:
-  -a, --agent string        User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
-      --config string       config file (default is $HOME/.go-dynamic-fetch.yaml)
-      --headless            Use headless shell
-  -i, --interval int        Interval (in seconds) to wait in between watching a selector (default 30)
-      --selectors strings   All selectors, in order of URLs passed in, to wait for
-  -t, --timeout int         Timeout for context - if none is specified a default background context will be used (default -1)
-      --urls strings        All URLs to watch
+  -a, --agent string             User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
+      --config string            config file (default is $HOME/.go-dynamic-fetch.yaml)
+      --headless                 Use headless shell
+  -i, --interval int             Interval (in seconds) to wait in between watching a selector (default 30)
+      --wait-selectors strings   All selectors, in order of URLs passed in, to wait for
+  -t, --timeout int              Timeout for context - if none is specified a default background context will be used (default -1)
+      --urls strings             All URLs to watch
 ```
 
 # Examples
@@ -129,7 +129,7 @@ Add to cart
 
 ## Command-line args watch and email example:
 ```
-go-dynamic-fetch --headless -t 10 watch --urls 'https://walmart.com/ip/Spider-Man-Miles-Morales-Launch-Edition-Sony-PlayStation-5/238397352' --selectors 'div.prod-product-cta-add-to-cart.display-inline-block' -i 30 email --from 'vrajendrantester@gmail.com' --to 'vishnu.raj.1993@gmail.com' --sender-password-env EMAIL_PASSWORD
+go-dynamic-fetch --headless -t 10 watch --urls 'https://walmart.com/ip/Spider-Man-Miles-Morales-Launch-Edition-Sony-PlayStation-5/238397352' --wait-selectors 'div.prod-product-cta-add-to-cart.display-inline-block' -i 30 email --from 'vrajendrantester@gmail.com' --to 'vishnu.raj.1993@gmail.com' --sender-password-env EMAIL_PASSWORD
 2020/11/26 22:43:44 Sending with subject Go-Dynamic-Fetch Watcher
 2020/11/26 22:43:44 Sending from email vrajendrantester@gmail.com
 2020/11/26 22:43:44 Sending to email vishnu.raj.1993@gmail.com

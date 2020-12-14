@@ -22,11 +22,62 @@ const (
 	DefaultSubject = "Go-Dynamic-Fetch Watcher"
 
 	// DefaultUserAgent The default user agent to send request as
-	DefaultUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36"
+	DefaultUserAgent = "Moizilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36"
 )
+
+var (
+	executors = map[string]actionExecutor{
+		"fetch": &fetchExecutor{},
+		"watch": &watchExecutor{},
+	}
+)
+
+type actionGenerator interface {
+	Generate(actions []chromedp.Action) []chromedp.Action
+}
+
+type actionExecutor interface {
+	Init(cmd *cobra.Command, actionGens [][]actionGenerator)
+	Execute(cmd *cobra.Command)
+}
 
 type watchFunc interface {
 	Execute(metadata string)
+}
+
+type dumpData struct {
+	ExtractText string
+}
+
+type emailData struct {
+	URL string
+}
+
+type waitActions struct {
+	url          string
+	waitSelector string
+}
+
+type dumpActions struct {
+	postActionData chan dumpData
+
+	textSelector string
+}
+
+type emailActions struct {
+	postActionData chan emailData
+
+	url string
+}
+
+type fetchExecutor struct {
+	actions [][]chromedp.Action
+}
+
+type watchExecutor struct {
+	interval int
+	urls     []string
+	actions  [][]chromedp.Action
 }
 
 type emailWatchFunc struct {
@@ -34,6 +85,126 @@ type emailWatchFunc struct {
 	fromEmail      string
 	toEmail        string
 	toSubject      string
+}
+
+func (c waitActions) Generate(actions []chromedp.Action) []chromedp.Action {
+	actions = append(actions, chromedp.Navigate(c.url))
+	if len(c.waitSelector) != 0 {
+		actions = append(actions, chromedp.WaitVisible(c.waitSelector, chromedp.ByQuery))
+	}
+
+	return actions
+}
+
+func (d dumpActions) Generate(actions []chromedp.Action) []chromedp.Action {
+	if len(d.textSelector) != 0 {
+		actions = append(actions,
+			chromedp.ActionFunc(func(ctx context.Context) error {
+				var res string
+				err := chromedp.Text(d.textSelector, &res).Do(ctx)
+				if err == nil {
+					go func() {
+						d.postActionData <- dumpData{ExtractText: res}
+					}()
+				} else {
+					go func() {
+						d.postActionData <- dumpData{}
+					}()
+				}
+
+				return err
+			}))
+	} else {
+		actions = append(actions,
+			chromedp.ActionFunc(func(ctx context.Context) error {
+				node, err := dom.GetDocument().Do(ctx)
+				if err != nil {
+					return err
+				}
+
+				res, err := dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+				if err == nil {
+					go func() {
+						d.postActionData <- dumpData{ExtractText: res}
+					}()
+				} else {
+					go func() {
+						d.postActionData <- dumpData{}
+					}()
+				}
+
+				return err
+			}))
+	}
+
+	return actions
+}
+
+func (e emailActions) Generate(actions []chromedp.Action) []chromedp.Action {
+	actions = append(actions,
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			go func() {
+				e.postActionData <- emailData{URL: e.url}
+			}()
+			return nil
+		}))
+
+	return actions
+}
+
+func (f *fetchExecutor) Init(cmd *cobra.Command, actionGens [][]actionGenerator) {
+	for _, gens := range actionGens {
+		a := make([]chromedp.Action, 0)
+		for _, g := range gens {
+			a = g.Generate(a)
+		}
+		f.actions = append(f.actions, a)
+	}
+}
+
+func (f fetchExecutor) Execute(cmd *cobra.Command) {
+	for i, a := range f.actions {
+		err := run(cmd, a)
+		if err != nil {
+			log.Printf("For URL [%d], received error [%v]", i, err)
+		}
+	}
+}
+
+func (w *watchExecutor) Init(cmd *cobra.Command, actionGens [][]actionGenerator) {
+	viper.BindPFlags(cmd.Flags())
+
+	w.interval = viper.GetInt("interval")
+	log.Printf("Will check for updates every %d seconds\n", w.interval)
+
+	for _, gens := range actionGens {
+		a := make([]chromedp.Action, 0)
+		for _, g := range gens {
+			a = g.Generate(a)
+		}
+		w.actions = append(w.actions, a)
+	}
+}
+
+func (w watchExecutor) Execute(cmd *cobra.Command) {
+	for i, a := range w.actions {
+		err := run(cmd, a)
+		if err != nil {
+			log.Printf("Data for %s was not available during this check - no email sent - received error %s\n", w.urls[i], err.Error())
+		}
+	}
+	ticker := time.NewTicker(time.Duration(w.interval) * time.Second)
+	for {
+		select {
+		case _ = <-ticker.C:
+			for i, a := range w.actions {
+				err := run(cmd, a)
+				if err != nil {
+					log.Printf("Data for %s was not available during this check - no email sent - received error %s\n", w.urls[i], err.Error())
+				}
+			}
+		}
+	}
 }
 
 func (e emailWatchFunc) Execute(metadata string) {
@@ -141,116 +312,70 @@ func createChromeContext(cmd *cobra.Command, opts []func(*chromedp.ExecAllocator
 	return ctx, cancel
 }
 
-func execute(cmd *cobra.Command, url string, waitSelector string, actionFunc chromedp.ActionFunc) error {
+func run(cmd *cobra.Command, actions []chromedp.Action) error {
 	opts, err := setOpt(cmd)
 	if err != nil {
 		return err
 	}
 
+	// perhaps add a check for an option that lets us reuse contexts
+	// between calls - this may involved saving the first one we init
+	// and reusing it in callers, but we'll leave this for now
+	// as it suits most of the current use cases
 	ctx, cancel := createChromeContext(cmd, opts)
 	defer cancel()
-
-	actions := make([]chromedp.Action, 0)
-	actions = append(actions, chromedp.Navigate(url))
-	if len(waitSelector) != 0 {
-		actions = append(actions, chromedp.WaitVisible(waitSelector, chromedp.ByQuery))
-	}
-	if actionFunc != nil {
-		actions = append(actions, actionFunc)
-	}
 
 	err = chromedp.Run(ctx, actions...)
 	return err
 }
 
-func checkAndPerformAction(cmd *cobra.Command, urls []string, selectors []string, postAction watchFunc) {
-	for i := 0; i < len(urls); i++ {
-		if err := execute(cmd,
-			urls[i],
-			selectors[i],
-			nil,
-		); err == nil {
-			postAction.Execute(urls[i])
-		} else {
-			log.Printf("Data for %s was not available during this check - no email sent - received error %s\n", urls[i], err.Error())
-		}
-	}
-}
-
-func fetch(cmd *cobra.Command, url string, waitSelector string, textSelector string) (string, error) {
-	var res string
-	var actionFunc chromedp.ActionFunc
-
-	if len(textSelector) != 0 {
-		actionFunc = chromedp.ActionFunc(func(ctx context.Context) error {
-			err := chromedp.Text(textSelector, &res).Do(ctx)
-			return err
-		})
-	} else {
-		actionFunc = chromedp.ActionFunc(func(ctx context.Context) error {
-			node, err := dom.GetDocument().Do(ctx)
-			if err != nil {
-				return err
-			}
-
-			res, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
-			return err
-		})
-	}
-
-	err := execute(cmd, url, waitSelector, actionFunc)
-	if err != nil {
-		return "", err
-	}
-
-	return res, nil
-}
-
-func watch(cmd *cobra.Command, urls []string, selectors []string, interval int, postAction watchFunc) {
-	checkAndPerformAction(cmd, urls, selectors, postAction)
-
-	ticker := time.NewTicker(time.Duration(interval) * time.Second)
-	for {
-		select {
-		case _ = <-ticker.C:
-			checkAndPerformAction(cmd, urls, selectors, postAction)
-		}
+func addWaitActions(urls []string, selectors []string, actionGens [][]actionGenerator) {
+	for i, u := range urls {
+		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: selectors[i]})
 	}
 }
 
 // PrintContent fetches HTML content
-func PrintContent(cmd *cobra.Command) error {
+func PrintContent(cmd *cobra.Command) {
 	viper.BindPFlags(cmd.Flags())
-	url := viper.GetString("url")
-	waitSelector := viper.GetString("wait-selector")
-	textSelector := viper.GetString("text-selector")
+	u := viper.GetString("url")
+	w := viper.GetString("wait-selector")
 
-	log.Printf("Fetching content from: %s\n", url)
-
-	if len(waitSelector) != 0 {
-		log.Printf("Waiting on selector: %s\n", waitSelector)
-	}
-	if len(textSelector) != 0 {
-		log.Printf("Will print text for %s\n", textSelector)
+	log.Printf("Fetching content from: %s\n", u)
+	if len(w) != 0 {
+		log.Printf("Waiting on selector: %s\n", w)
 	}
 
-	res, err := fetch(cmd, url, waitSelector, textSelector)
-	if err == nil {
-		fmt.Println(res)
+	t := viper.GetString("text-selector")
+
+	if len(t) != 0 {
+		log.Printf("Will print text for %s\n", t)
 	}
-	return err
+
+	p := make(chan dumpData)
+	actionGens := make([][]actionGenerator, 0)
+	actionGens = append(actionGens, make([]actionGenerator, 0))
+
+	addWaitActions([]string{u}, []string{w}, actionGens)
+	actionGens[0] = append(actionGens[0], dumpActions{postActionData: p, textSelector: t})
+
+	executors["fetch"].Init(cmd, actionGens)
+	executors["fetch"].Execute(cmd)
+
+	data := <-p
+	fmt.Printf(data.ExtractText)
 }
 
 // EmailContent will watch content and take action if content is available
 func EmailContent(cmd *cobra.Command) {
 	viper.BindPFlags(cmd.Flags())
-	urls := viper.GetStringSlice("urls")
-	selectors := viper.GetStringSlice("selectors")
 
 	subject := viper.GetString("subject")
 	from := viper.GetString("from")
 	to := viper.GetString("to")
-	interval := viper.GetInt("interval")
+
+	urls := viper.GetStringSlice("urls")
+	selectors := viper.GetStringSlice("wait-selectors")
 
 	envPassword := viper.GetString("sender-password-env")
 	viper.BindEnv(envPassword)
@@ -259,16 +384,34 @@ func EmailContent(cmd *cobra.Command) {
 	log.Printf("Sending with subject %s\n", subject)
 	log.Printf("Sending from email %s\n", from)
 	log.Printf("Sending to email %s\n", to)
-	log.Printf("Will check for updates every %d seconds\n", interval)
 
-	// watch will just run until we choose to terminate
-	// doesn't return content like fetch
+	log.Printf("Watching URLs %v\n", urls)
+	log.Printf("Waiting on selectors %v\n", selectors)
+
+	p := make(chan emailData)
 	postAction := emailWatchFunc{
 		fromEmail:      from,
 		toEmail:        to,
 		toSubject:      subject,
 		senderPassword: password,
 	}
+	go func() {
+		for {
+			data := <-p
+			postAction.Execute(data.URL)
+		}
+	}()
 
-	watch(cmd, urls, selectors, interval, postAction)
+	actionGens := make([][]actionGenerator, 0)
+	for i := 0; i < len(urls); i++ {
+		actionGens = append(actionGens, make([]actionGenerator, 0))
+	}
+
+	addWaitActions(urls, selectors, actionGens)
+	for i, u := range urls {
+		actionGens[i] = append(actionGens[i], emailActions{postActionData: p, url: u})
+	}
+
+	executors["watch"].Init(cmd, actionGens)
+	executors["watch"].Execute(cmd) // blocks
 }

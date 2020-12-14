@@ -37,16 +37,19 @@ var watchCmd = &cobra.Command{
 			return fmt.Errorf("We require a non-empty comma separated slice of URL(s)")
 		}
 
-		selectors := viper.GetStringSlice("selectors")
+		selectors := viper.GetStringSlice("wait-selectors")
 		if selectors == nil {
 			return fmt.Errorf("We require a non-empty comma separated slice of selector(s)")
 		}
 
-		if len(urls) != len(selectors) {
-			return fmt.Errorf("All slices passed in must have the same length")
+		if len(urls) != len(selectors) || len(urls) == 0 {
+			return fmt.Errorf("Number of URLs and selectors passed in must have the same length and be non-zero")
 		}
 
 		return nil
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return fmt.Errorf("Must call a sub-command of watch")
 	},
 }
 
@@ -54,6 +57,6 @@ func init() {
 	rootCmd.AddCommand(watchCmd)
 
 	watchCmd.PersistentFlags().StringSlice("urls", nil, "All URLs to watch")
-	watchCmd.PersistentFlags().StringSlice("selectors", nil, "All selectors, in order of URLs passed in, to wait for")
+	watchCmd.PersistentFlags().StringSlice("wait-selectors", nil, "All selectors, in order of URLs passed in, to wait for")
 	watchCmd.PersistentFlags().IntP("interval", "i", fetcher.DefaultInterval, "Interval (in seconds) to wait in between watching a selector")
 }

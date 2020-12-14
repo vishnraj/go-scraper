@@ -39,8 +39,8 @@ var fetchCmd = &cobra.Command{
 
 		return nil
 	},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return fetcher.PrintContent(cmd)
+	Run: func(cmd *cobra.Command, args []string) {
+		fetcher.PrintContent(cmd)
 	},
 }
 
