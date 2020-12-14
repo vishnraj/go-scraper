@@ -407,15 +407,15 @@ func PrintContent(cmd *cobra.Command) {
 	u := viper.GetString("url")
 	w := viper.GetString("wait-selector")
 
-	Log().Infof("Fetching content from: %s\n", u)
+	Log().Infof("Fetching content from: %s", u)
 	if len(w) != 0 {
-		Log().Infof("Waiting on selector: %s\n", w)
+		Log().Infof("Waiting on selector: %s", w)
 	}
 
 	t := viper.GetString("text-selector")
 
 	if len(t) != 0 {
-		Log().Infof("Will print text for %s\n", t)
+		Log().Infof("Will print text for %s", t)
 	}
 
 	p := make(chan dumpData)
@@ -446,23 +446,26 @@ func EmailContent(cmd *cobra.Command) {
 	urls := viper.GetStringSlice("urls")
 	waitSelectors := viper.GetStringSlice("wait-selectors")
 
+	envPassword := viper.GetString("sender-password-env")
+	viper.BindEnv(envPassword)
+	password := viper.GetString(envPassword)
+
+	Log().Infof("Sending with subject %s", subject)
+	Log().Infof("Sending from email %s", from)
+	Log().Infof("Sending to email %s", to)
+
+	Log().Infof("Watching URLs %v", urls)
+	Log().Infof("Waiting on selectors %v", waitSelectors)
+
 	var checkSelectors []string
 	var expectedTexts []string
 	if viper.IsSet("check-selectors") && viper.IsSet("expected-texts") {
 		checkSelectors = viper.GetStringSlice("check-selectors")
 		expectedTexts = viper.GetStringSlice("expected-texts")
+
+		Log().Infof("Using check-selectors %v", checkSelectors)
+		Log().Infof("Using expected-texts %v", expectedTexts)
 	}
-
-	envPassword := viper.GetString("sender-password-env")
-	viper.BindEnv(envPassword)
-	password := viper.GetString(envPassword)
-
-	Log().Infof("Sending with subject %s\n", subject)
-	Log().Infof("Sending from email %s\n", from)
-	Log().Infof("Sending to email %s\n", to)
-
-	Log().Infof("Watching URLs %v\n", urls)
-	Log().Infof("Waiting on selectors %v\n", waitSelectors)
 
 	p := make(chan emailData)
 	postAction := emailWatchFunc{
