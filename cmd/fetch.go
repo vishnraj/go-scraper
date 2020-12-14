@@ -32,8 +32,8 @@ var fetchCmd = &cobra.Command{
 	Long:  `Fetches all content from the URL in HTML format and writes it to stdout`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
-		v := viper.GetString("url")
-		if v == "" {
+		u := viper.GetString("url")
+		if u == "" {
 			return fmt.Errorf("We require a non-empty URL")
 		}
 

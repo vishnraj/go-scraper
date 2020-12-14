@@ -57,6 +57,8 @@ Available Commands:
   email       Emails if the desired criteria is met in watch
 
 Flags:
+      --check-selectors strings   Selectors that are used to check for the given expected-texts
+      --expected-texts strings    Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check-selectors passed in (in order)
   -h, --help                     help for watch
   -i, --interval int             Interval (in seconds) to wait in between watching a selector (default 30)
       --wait-selectors strings   All selectors, in order of URLs passed in, to wait for
@@ -85,7 +87,9 @@ Flags:
 
 Global Flags:
   -a, --agent string             User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
+      --check-selectors strings   Selectors that are used to check for the given expected-texts
       --config string            config file (default is $HOME/.go-dynamic-fetch.yaml)
+      --expected-texts strings    Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check-selectors passed in (in order)
       --headless                 Use headless shell
   -i, --interval int             Interval (in seconds) to wait in between watching a selector (default 30)
       --wait-selectors strings   All selectors, in order of URLs passed in, to wait for

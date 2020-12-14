@@ -22,7 +22,6 @@ import (
 	"github.com/vishnraj/go-dynamic-fetch/fetcher"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // watchCmd represents the watch command
@@ -31,22 +30,7 @@ var watchCmd = &cobra.Command{
 	Short: "Watch URL(s) and take an action if criteria is met",
 	Long:  `This command provides sub-commands that we can run to take a particular action if the selectors (in the order of URLs specified) are found on the particular web-page (for the timeout set) and it will keep watching for the selectors at the set interval`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		viper.BindPFlags(cmd.Flags())
-		urls := viper.GetStringSlice("urls")
-		if urls == nil {
-			return fmt.Errorf("We require a non-empty comma separated slice of URL(s)")
-		}
-
-		selectors := viper.GetStringSlice("wait-selectors")
-		if selectors == nil {
-			return fmt.Errorf("We require a non-empty comma separated slice of selector(s)")
-		}
-
-		if len(urls) != len(selectors) || len(urls) == 0 {
-			return fmt.Errorf("Number of URLs and selectors passed in must have the same length and be non-zero")
-		}
-
-		return nil
+		return fetcher.CommonWatchChecks(cmd)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Must call a sub-command of watch")
@@ -58,5 +42,9 @@ func init() {
 
 	watchCmd.PersistentFlags().StringSlice("urls", nil, "All URLs to watch")
 	watchCmd.PersistentFlags().StringSlice("wait-selectors", nil, "All selectors, in order of URLs passed in, to wait for")
+
+	watchCmd.PersistentFlags().StringSlice("check-selectors", nil, "Selectors that are used to check for the given expected-texts")
+	watchCmd.PersistentFlags().StringSlice("expected-texts", nil, "Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check-selectors passed in (in order)")
+
 	watchCmd.PersistentFlags().IntP("interval", "i", fetcher.DefaultInterval, "Interval (in seconds) to wait in between watching a selector")
 }

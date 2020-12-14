@@ -54,7 +54,7 @@ var emailCmd = &cobra.Command{
 			return fmt.Errorf("We require a non-empty sender email password")
 		}
 
-		return nil
+		return fetcher.CommonWatchChecks(cmd)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		fetcher.EmailContent(cmd)

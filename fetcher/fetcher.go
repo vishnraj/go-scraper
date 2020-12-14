@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/apsdehal/go-logger"
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/chromedp"
 	"github.com/spf13/cobra"
@@ -43,16 +44,13 @@ type actionExecutor interface {
 	Execute(cmd *cobra.Command)
 }
 
-type watchFunc interface {
-	Execute(metadata string)
-}
-
 type dumpData struct {
 	ExtractText string
 }
 
 type emailData struct {
-	URL string
+	URL  string
+	Text string
 }
 
 type waitActions struct {
@@ -69,11 +67,15 @@ type dumpActions struct {
 type emailActions struct {
 	postActionData chan emailData
 
+	checkSelector string
+	expectedText  string
+
 	url string
 }
 
 type fetchExecutor struct {
 	actions [][]chromedp.Action
+	errs    chan error
 }
 
 type watchExecutor struct {
@@ -99,45 +101,35 @@ func (c waitActions) Generate(actions []chromedp.Action) []chromedp.Action {
 }
 
 func (d dumpActions) Generate(actions []chromedp.Action) []chromedp.Action {
-	if len(d.textSelector) != 0 {
-		actions = append(actions,
-			chromedp.ActionFunc(func(ctx context.Context) error {
-				var res string
-				err := chromedp.Text(d.textSelector, &res).Do(ctx)
-				if err == nil {
-					go func() {
-						d.postActionData <- dumpData{ExtractText: res}
-					}()
-				} else {
-					go func() {
-						d.postActionData <- dumpData{}
-					}()
-				}
+	actions = append(actions,
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			var res string
+			var err error
 
-				return err
-			}))
-	} else {
-		actions = append(actions,
-			chromedp.ActionFunc(func(ctx context.Context) error {
-				node, err := dom.GetDocument().Do(ctx)
+			if len(d.textSelector) != 0 {
+				err = chromedp.Text(d.textSelector, &res).Do(ctx)
+			} else {
+				var node *cdp.Node
+				node, err = dom.GetDocument().Do(ctx)
 				if err != nil {
 					return err
 				}
 
-				res, err := dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
-				if err == nil {
-					go func() {
-						d.postActionData <- dumpData{ExtractText: res}
-					}()
-				} else {
-					go func() {
-						d.postActionData <- dumpData{}
-					}()
-				}
+				res, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+			}
 
-				return err
-			}))
-	}
+			if err == nil {
+				go func() {
+					d.postActionData <- dumpData{ExtractText: res}
+				}()
+			} else {
+				go func() {
+					d.postActionData <- dumpData{}
+				}()
+			}
+
+			return err
+		}))
 
 	return actions
 }
@@ -145,9 +137,26 @@ func (d dumpActions) Generate(actions []chromedp.Action) []chromedp.Action {
 func (e emailActions) Generate(actions []chromedp.Action) []chromedp.Action {
 	actions = append(actions,
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			go func() {
-				e.postActionData <- emailData{URL: e.url}
-			}()
+			if len(e.checkSelector) != 0 && len(e.expectedText) != 0 {
+				var res string
+				err := chromedp.Text(e.checkSelector, &res).Do(ctx)
+				if err != nil {
+					return err
+				}
+
+				if res == e.expectedText {
+					go func() {
+						e.postActionData <- emailData{URL: e.url, Text: res}
+					}()
+				} else {
+					Log().Infof("Result found for URL [%s] was [%s] instead of [%s]", e.url, res, e.expectedText)
+				}
+			} else {
+				go func() {
+					e.postActionData <- emailData{URL: e.url}
+				}()
+			}
+
 			return nil
 		}))
 
@@ -155,6 +164,8 @@ func (e emailActions) Generate(actions []chromedp.Action) []chromedp.Action {
 }
 
 func (f *fetchExecutor) Init(cmd *cobra.Command, actionGens [][]actionGenerator) {
+	f.errs = make(chan error)
+
 	for _, gens := range actionGens {
 		a := make([]chromedp.Action, 0)
 		for _, g := range gens {
@@ -164,17 +175,22 @@ func (f *fetchExecutor) Init(cmd *cobra.Command, actionGens [][]actionGenerator)
 	}
 }
 
-func (f fetchExecutor) Execute(cmd *cobra.Command) {
+func (f *fetchExecutor) Execute(cmd *cobra.Command) {
 	for i, a := range f.actions {
 		err := run(cmd, a)
 		if err != nil {
 			Log().Errorf("For URL [%d], received error [%v]", i, err)
 		}
+		go func() {
+			f.errs <- err
+		}()
 	}
 }
 
 func (w *watchExecutor) Init(cmd *cobra.Command, actionGens [][]actionGenerator) {
 	viper.BindPFlags(cmd.Flags())
+
+	w.urls = viper.GetStringSlice("urls")
 
 	w.interval = viper.GetInt("interval")
 	Log().Infof("Will check for updates every %d seconds\n", w.interval)
@@ -188,7 +204,7 @@ func (w *watchExecutor) Init(cmd *cobra.Command, actionGens [][]actionGenerator)
 	}
 }
 
-func (w watchExecutor) Execute(cmd *cobra.Command) {
+func (w *watchExecutor) Execute(cmd *cobra.Command) {
 	for i, a := range w.actions {
 		err := run(cmd, a)
 		if err != nil {
@@ -209,7 +225,7 @@ func (w watchExecutor) Execute(cmd *cobra.Command) {
 	}
 }
 
-func (e emailWatchFunc) Execute(metadata string) {
+func (e emailWatchFunc) sendEmail(data emailData) {
 	smtpHost := "smtp.gmail.com"
 	smtpPort := "465"
 
@@ -253,7 +269,10 @@ func (e emailWatchFunc) Execute(metadata string) {
 	message := "To: " + e.toEmail + "\r\n" +
 		"Subject: " + e.toSubject + "\r\n" +
 		"\r\n" +
-		metadata + "\r\n"
+		"URL: " + data.URL + "\r\n"
+	if len(data.Text) != 0 {
+		message += "Text: " + data.Text + "\r\n"
+	}
 
 	_, err = w.Write([]byte(message))
 	if err != nil {
@@ -350,6 +369,38 @@ func Log() *logger.Logger {
 	return gLog
 }
 
+// CommonWatchChecks checks if the common required flags for watch command are present - sub-commands check their own specific flags separately
+func CommonWatchChecks(cmd *cobra.Command) error {
+	viper.BindPFlags(cmd.Flags())
+
+	urls := viper.GetStringSlice("urls")
+	if urls == nil {
+		return fmt.Errorf("We require a non-empty comma separated slice of URL(s)")
+	}
+
+	waitSelectors := viper.GetStringSlice("wait-selectors")
+	if waitSelectors == nil {
+		return fmt.Errorf("We require a non-empty comma separated slice of selector(s)")
+	}
+
+	if len(urls) == 0 || len(urls) != len(waitSelectors) {
+		return fmt.Errorf("Number of URLs and selectors passed in must have the same length and be non-zero")
+	}
+
+	// these are optional
+	if (viper.IsSet("check-selectors") && !viper.IsSet("expected-texts")) || (!viper.IsSet("check-selectors") && viper.IsSet("expected-texts")) {
+		return fmt.Errorf("Specify both check-selectors and expected-texts or neither")
+	} else if viper.IsSet("check-selectors") {
+		checkSelectors := viper.GetStringSlice("check-selectors")
+		expectedTexts := viper.GetStringSlice("expected-texts")
+		if len(urls) != len(checkSelectors) || len(checkSelectors) != len(expectedTexts) {
+			return fmt.Errorf("expected-texts and check-selectors must be the same length and match the number of URLs specified, invalid check-selectors length [%d], expected-texts length [%d] and URLs length is [%d]", len(checkSelectors), len(expectedTexts), len(urls))
+		}
+	}
+
+	return nil
+}
+
 // PrintContent fetches HTML content
 func PrintContent(cmd *cobra.Command) {
 	viper.BindPFlags(cmd.Flags())
@@ -377,8 +428,11 @@ func PrintContent(cmd *cobra.Command) {
 	executors["fetch"].Init(cmd, actionGens)
 	executors["fetch"].Execute(cmd)
 
-	data := <-p
-	fmt.Printf(data.ExtractText)
+	f := executors["fetch"].(*fetchExecutor)
+	if err := <-f.errs; err == nil {
+		data := <-p
+		fmt.Printf(data.ExtractText)
+	}
 }
 
 // EmailContent will watch content and take action if content is available
@@ -390,7 +444,14 @@ func EmailContent(cmd *cobra.Command) {
 	to := viper.GetString("to")
 
 	urls := viper.GetStringSlice("urls")
-	selectors := viper.GetStringSlice("wait-selectors")
+	waitSelectors := viper.GetStringSlice("wait-selectors")
+
+	var checkSelectors []string
+	var expectedTexts []string
+	if viper.IsSet("check-selectors") && viper.IsSet("expected-texts") {
+		checkSelectors = viper.GetStringSlice("check-selectors")
+		expectedTexts = viper.GetStringSlice("expected-texts")
+	}
 
 	envPassword := viper.GetString("sender-password-env")
 	viper.BindEnv(envPassword)
@@ -401,7 +462,7 @@ func EmailContent(cmd *cobra.Command) {
 	Log().Infof("Sending to email %s\n", to)
 
 	Log().Infof("Watching URLs %v\n", urls)
-	Log().Infof("Waiting on selectors %v\n", selectors)
+	Log().Infof("Waiting on selectors %v\n", waitSelectors)
 
 	p := make(chan emailData)
 	postAction := emailWatchFunc{
@@ -413,7 +474,7 @@ func EmailContent(cmd *cobra.Command) {
 	go func() {
 		for {
 			data := <-p
-			postAction.Execute(data.URL)
+			postAction.sendEmail(data)
 		}
 	}()
 
@@ -422,9 +483,14 @@ func EmailContent(cmd *cobra.Command) {
 		actionGens = append(actionGens, make([]actionGenerator, 0))
 	}
 
-	addWaitActions(urls, selectors, actionGens)
+	addWaitActions(urls, waitSelectors, actionGens)
 	for i, u := range urls {
-		actionGens[i] = append(actionGens[i], emailActions{postActionData: p, url: u})
+		e := emailActions{postActionData: p, url: u}
+		if checkSelectors != nil && expectedTexts != nil {
+			e.checkSelector = checkSelectors[i]
+			e.expectedText = expectedTexts[i]
+		}
+		actionGens[i] = append(actionGens[i], e)
 	}
 
 	executors["watch"].Init(cmd, actionGens)
