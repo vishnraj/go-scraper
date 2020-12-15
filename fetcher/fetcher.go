@@ -45,6 +45,7 @@ type actionExecutor interface {
 }
 
 type dumpData struct {
+	URL         string
 	ExtractText string
 }
 
@@ -62,6 +63,8 @@ type dumpActions struct {
 	postActionData chan dumpData
 
 	textSelector string
+
+	url string
 }
 
 type emailActions struct {
@@ -82,6 +85,9 @@ type watchExecutor struct {
 	interval int
 	urls     []string
 	actions  [][]chromedp.Action
+
+	dumpOnError bool
+	errorDumps  chan dumpData
 }
 
 type emailWatchFunc struct {
@@ -120,7 +126,7 @@ func (d dumpActions) Generate(actions []chromedp.Action) []chromedp.Action {
 
 			if err == nil {
 				go func() {
-					d.postActionData <- dumpData{ExtractText: res}
+					d.postActionData <- dumpData{URL: d.url, ExtractText: res}
 				}()
 			} else {
 				go func() {
@@ -191,8 +197,13 @@ func (w *watchExecutor) Init(cmd *cobra.Command, actionGens [][]actionGenerator)
 	viper.BindPFlags(cmd.Flags())
 
 	w.urls = viper.GetStringSlice("urls")
-
+	w.dumpOnError = viper.GetBool("wait-error-dump")
 	w.interval = viper.GetInt("interval")
+
+	if w.dumpOnError {
+		Log().Infof("Will dump the page contents for each provided URL if we cannot load the expected contents")
+	}
+
 	Log().Infof("Will check for updates every %d seconds\n", w.interval)
 
 	for _, gens := range actionGens {
@@ -209,6 +220,17 @@ func (w *watchExecutor) Execute(cmd *cobra.Command) {
 		err := run(cmd, a)
 		if err != nil {
 			Log().Errorf("Data for %s was not available during this check - no email sent - received error %s\n", w.urls[i], err.Error())
+
+			if w.dumpOnError {
+				for d := range w.errorDumps {
+					if d.URL != w.urls[i] {
+						continue
+					}
+
+					Log().Errorf("Dumping content for URL [%s]:\n%s", d.URL, d.ExtractText)
+					break
+				}
+			}
 		}
 	}
 	ticker := time.NewTicker(time.Duration(w.interval) * time.Second)
@@ -219,6 +241,17 @@ func (w *watchExecutor) Execute(cmd *cobra.Command) {
 				err := run(cmd, a)
 				if err != nil {
 					Log().Errorf("Data for %s was not available during this check - no email sent - received error %s\n", w.urls[i], err.Error())
+
+					if w.dumpOnError {
+						for d := range w.errorDumps {
+							if d.URL != w.urls[i] {
+								continue
+							}
+
+							Log().Errorf("Dumping content for URL [%s]:\n%s", d.URL, d.ExtractText)
+							break
+						}
+					}
 				}
 			}
 		}
@@ -445,6 +478,7 @@ func EmailContent(cmd *cobra.Command) {
 
 	urls := viper.GetStringSlice("urls")
 	waitSelectors := viper.GetStringSlice("wait-selectors")
+	waitErrorDump := viper.GetBool("wait-error-dump")
 
 	envPassword := viper.GetString("sender-password-env")
 	viper.BindEnv(envPassword)
@@ -486,6 +520,13 @@ func EmailContent(cmd *cobra.Command) {
 		actionGens = append(actionGens, make([]actionGenerator, 0))
 	}
 
+	d := make(chan dumpData)
+	if waitErrorDump {
+		for i, u := range urls {
+			actionGens[i] = append(actionGens[i], dumpActions{postActionData: d, url: u})
+		}
+	}
+
 	addWaitActions(urls, waitSelectors, actionGens)
 	for i, u := range urls {
 		e := emailActions{postActionData: p, url: u}
@@ -497,5 +538,7 @@ func EmailContent(cmd *cobra.Command) {
 	}
 
 	executors["watch"].Init(cmd, actionGens)
+	e := executors["watch"].(*watchExecutor)
+	e.errorDumps = d
 	executors["watch"].Execute(cmd) // blocks
 }

@@ -62,6 +62,7 @@ Flags:
   -h, --help                     help for watch
   -i, --interval int             Interval (in seconds) to wait in between watching a selector (default 30)
       --wait-selectors strings   All selectors, in order of URLs passed in, to wait for
+      --wait-error-dump           If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
       --urls strings             All URLs to watch
 
 Global Flags:
@@ -93,6 +94,7 @@ Global Flags:
       --headless                 Use headless shell
   -i, --interval int             Interval (in seconds) to wait in between watching a selector (default 30)
       --wait-selectors strings   All selectors, in order of URLs passed in, to wait for
+      --wait-error-dump           If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
   -t, --timeout int              Timeout for context - if none is specified a default background context will be used (default -1)
       --urls strings             All URLs to watch
 ```
