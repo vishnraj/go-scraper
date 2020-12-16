@@ -219,7 +219,7 @@ func (w *watchExecutor) Execute(cmd *cobra.Command) {
 	for i, a := range w.actions {
 		err := run(cmd, a)
 		if err != nil {
-			Log().Errorf("Data for %s was not available during this check - no email sent - received error %s\n", w.urls[i], err.Error())
+			Log().Errorf("Data for %s was not available during this check - received error %s\n", w.urls[i], err.Error())
 
 			if w.dumpOnError {
 				for d := range w.errorDumps {
@@ -240,7 +240,7 @@ func (w *watchExecutor) Execute(cmd *cobra.Command) {
 			for i, a := range w.actions {
 				err := run(cmd, a)
 				if err != nil {
-					Log().Errorf("Data for %s was not available during this check - no email sent - received error %s\n", w.urls[i], err.Error())
+					Log().Errorf("Data for %s was not available during this check - received error %s\n", w.urls[i], err.Error())
 
 					if w.dumpOnError {
 						for d := range w.errorDumps {
