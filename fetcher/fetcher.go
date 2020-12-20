@@ -341,9 +341,9 @@ func (e emailWatchFunc) sendEmail(data emailData) {
 
 func setOpt() ([]func(*chromedp.ExecAllocator), error) {
 	agent := viper.GetString("agent")
+	Log().Infof("Running with agent [%s]", agent)
 
 	runHeadless := viper.GetBool("headless")
-
 	var opts []func(*chromedp.ExecAllocator)
 	if !runHeadless {
 		Log().Info("Running without headless enabled")
