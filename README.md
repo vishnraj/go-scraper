@@ -95,10 +95,10 @@ Global Flags:
       --expected-texts strings    Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check-selectors passed in (in order)
       --headless                 Use headless shell
   -i, --interval int             Interval (in seconds) to wait in between watching a selector (default 30)
-      --wait-error-dump           If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
   -t, --timeout int              Timeout for context - if none is specified a default background context will be used (default -1)
       --urls strings             All URLs to watch
       --wait-error-dump          If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
+      --wait-selectors strings   All selectors, in order of URLs passed in, to wait for
 ```
 
 # Examples
