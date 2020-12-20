@@ -60,8 +60,9 @@ type waitActions struct {
 	url          string
 	waitSelector string
 
-	dumpOnError bool
-	errorDumps  chan dumpData
+	locationOnError bool
+	dumpOnError     bool
+	errorDumps      chan dumpData
 }
 
 type dumpActions struct {
@@ -114,15 +115,19 @@ func (w waitActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 		actions = append(actions,
 			chromedp.ActionFunc(func(ctx context.Context) error {
 				err := chromedp.WaitVisible(w.waitSelector).Do(ctx)
-				if err != nil && w.dumpOnError {
+				if err != nil && (w.dumpOnError || w.locationOnError) {
 					select {
 					case d := <-w.errorDumps:
-						Log().Errorf("Dumping content for URL [%s]:", d.URL)
-						fmt.Printf("%s", d.ExtractText)
+						if w.dumpOnError {
+							Log().Errorf("Dumping content for URL [%s]:", w.url)
+							fmt.Printf("%s", d.ExtractText)
+						} else if w.locationOnError {
+							Log().Errorf("Logging the current URL location as [%s] for our original target [%s]", d.URL, w.url)
+						}
 					default:
 						Log().Errorf("No content to dump for wait failure for URL [%s]", w.url)
 					}
-				} else if err == nil && w.dumpOnError {
+				} else if err == nil && (w.dumpOnError || w.locationOnError) {
 					// just read off the channel, so it's not there later
 					select {
 					case <-w.errorDumps:
@@ -140,9 +145,11 @@ func (w waitActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 func (d dumpActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	actions = append(actions,
 		chromedp.ActionFunc(func(ctx context.Context) error {
+			var currentURL string
 			var res string
 			var err error
 
+			err = chromedp.Location(&currentURL).Do(ctx)
 			if len(d.textSelector) != 0 {
 				err = chromedp.Text(d.textSelector, &res).Do(ctx)
 			} else {
@@ -164,7 +171,7 @@ func (d dumpActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 
 			if err == nil {
 				go func() {
-					d.postActionData <- dumpData{URL: d.url, ExtractText: res}
+					d.postActionData <- dumpData{URL: currentURL, ExtractText: res}
 				}()
 			} else {
 				go func() {
@@ -234,12 +241,7 @@ func (f *fetchExecutor) Execute() {
 
 func (w *watchExecutor) Init(actionGens [][]actionGenerator) {
 	w.urls = viper.GetStringSlice("urls")
-	w.dumpOnError = viper.GetBool("wait-error-dump")
 	w.interval = viper.GetInt("interval")
-
-	if w.dumpOnError {
-		Log().Infof("Will dump the page contents for each provided URL if we cannot load the expected contents")
-	}
 
 	Log().Infof("Will check for updates every %d seconds\n", w.interval)
 
@@ -449,6 +451,7 @@ func PrintContent(cmd *cobra.Command) {
 	w := viper.GetString("wait-selector")
 
 	waitErrorDump := viper.GetBool("wait-error-dump")
+	waitErrorLocation := viper.GetBool("wait-error-location")
 
 	Log().Infof("Fetching content from: %s", u)
 	if len(w) != 0 {
@@ -464,6 +467,9 @@ func PrintContent(cmd *cobra.Command) {
 	if waitErrorDump {
 		Log().Info("Will dump out HTML page content on wait errors")
 	}
+	if waitErrorLocation {
+		Log().Info("Will log the current URL location on wait errors")
+	}
 
 	fetchDumps := make(chan dumpData)
 	errorDumps := make(chan dumpData)
@@ -471,10 +477,10 @@ func PrintContent(cmd *cobra.Command) {
 	actionGens = append(actionGens, make([]actionGenerator, 0))
 
 	actionGens[0] = append(actionGens[0], navigateActions{url: u})
-	if waitErrorDump {
+	if waitErrorDump || waitErrorLocation {
 		actionGens[0] = append(actionGens[0], dumpActions{postActionData: errorDumps, url: u})
 	}
-	actionGens[0] = append(actionGens[0], waitActions{url: u, waitSelector: w, dumpOnError: waitErrorDump, errorDumps: errorDumps})
+	actionGens[0] = append(actionGens[0], waitActions{url: u, waitSelector: w, dumpOnError: waitErrorDump, locationOnError: waitErrorLocation, errorDumps: errorDumps})
 	actionGens[0] = append(actionGens[0], dumpActions{postActionData: fetchDumps, textSelector: t, url: u})
 
 	f := executors["fetch"].(*fetchExecutor)
@@ -497,6 +503,7 @@ func EmailContent(cmd *cobra.Command) {
 	urls := viper.GetStringSlice("urls")
 	waitSelectors := viper.GetStringSlice("wait-selectors")
 	waitErrorDump := viper.GetBool("wait-error-dump")
+	waitErrorLocation := viper.GetBool("wait-error-location")
 
 	envPassword := viper.GetString("sender-password-env")
 	viper.BindEnv(envPassword)
@@ -511,6 +518,9 @@ func EmailContent(cmd *cobra.Command) {
 
 	if waitErrorDump {
 		Log().Info("Will dump out HTML page content on wait errors")
+	}
+	if waitErrorLocation {
+		Log().Info("Will log the current URL location on wait errors")
 	}
 
 	var checkSelectors []string
@@ -545,10 +555,10 @@ func EmailContent(cmd *cobra.Command) {
 	for i, u := range urls {
 		errorDumps := make(chan dumpData)
 		actionGens[i] = append(actionGens[i], navigateActions{url: u})
-		if waitErrorDump {
+		if waitErrorDump || waitErrorLocation {
 			actionGens[i] = append(actionGens[i], dumpActions{postActionData: errorDumps, url: u})
 		}
-		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: waitErrorDump, errorDumps: errorDumps})
+		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: waitErrorDump, locationOnError: waitErrorLocation, errorDumps: errorDumps})
 		e := emailActions{postActionData: emailMetaData, url: u}
 		if checkSelectors != nil && expectedTexts != nil {
 			e.checkSelector = checkSelectors[i]
