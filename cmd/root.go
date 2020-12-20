@@ -52,7 +52,7 @@ func init() {
 	// specify all configurable values as options instead
 	// additional flags will be specified in sub-commands
 	rootCmd.PersistentFlags().Bool("headless", false, "Use headless shell")
-	rootCmd.PersistentFlags().StringP("agent", "a", fetcher.DefaultUserAgent, "User agent to request as - if not specified the default is used")
+	rootCmd.PersistentFlags().StringSliceP("agents", "a", fetcher.DefaultUserAgents, "User agent(s) to request as - if not specified the default is used")
 	rootCmd.PersistentFlags().IntP("timeout", "t", -1, "Timeout for context - if none is specified a default background context will be used")
 	rootCmd.PersistentFlags().Bool("wait_error_dump", false, "If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents")
 	rootCmd.PersistentFlags().Bool("wait_error_location", false, "If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at")
