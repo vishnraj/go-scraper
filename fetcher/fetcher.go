@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"math/rand"
 	"net/smtp"
 	"time"
 
@@ -19,12 +20,14 @@ const (
 
 	// DefaultSubject to send email with
 	DefaultSubject = "Go-Dynamic-Fetch Watcher"
-
-	// DefaultUserAgent The default user agent to send request as
-	DefaultUserAgent = `Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36`
 )
 
 var (
+	// DefaultUserAgents The default user agents to send requests as
+	DefaultUserAgents = []string{
+		`Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36`,
+	}
+
 	executors = map[string]actionExecutor{
 		"fetch": &fetchExecutor{},
 		"watch": &watchExecutor{},
@@ -356,9 +359,23 @@ func (e emailWatchFunc) sendEmail(data emailData) {
 	Log().Infof("Emailed %s successfully\n", e.toEmail)
 }
 
+func getAgent(agents []string) string {
+	rand.Seed(time.Now().UTC().UnixNano())
+	rand.Shuffle(len(agents), func(i, j int) {
+		agents[i], agents[j] = agents[j], agents[i]
+	})
+	index := rand.Intn(len(agents))
+	return agents[index]
+}
+
 func setOpt() ([]func(*chromedp.ExecAllocator), error) {
-	agent := viper.GetString("agent")
-	Log().Infof("Running with agent [%s]", agent)
+	agents := viper.GetStringSlice("agents")
+	if len(agents) == 0 {
+		agents = DefaultUserAgents
+	}
+	Log().Infof("Running with agents [%s]", agents)
+	agent := getAgent(agents)
+	Log().Infof("Selected with agent [%s]", agent)
 
 	runHeadless := viper.GetBool("headless")
 	var opts []func(*chromedp.ExecAllocator)
