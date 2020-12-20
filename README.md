@@ -37,9 +37,9 @@ Usage:
 
 Flags:
   -h, --help                   help for fetch
-      --text-selector string   Gets and prints text for the desired selector and if not specified dump all content retrieved
+      --text_selector string   Gets and prints text for the desired selector and if not specified dump all content retrieved
   -u, --url string             URL that you are fetching HTML content for
-      --wait-selector string   Selector for element to wait for - if not specified we do not wait and just dump static elements
+      --wait_selector string   Selector for element to wait for - if not specified we do not wait and just dump static elements
 
 Global Flags:
   -a, --agent string           User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
@@ -62,7 +62,7 @@ Available Commands:
 
 Flags:
       --check_selectors strings   Selectors that are used to check for the given expected-texts
-      --expected_texts strings    Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check_selectors passed in (in order)
+      --expected_texts strings    Pieces of texts that represent the normal state of an item - when the status is updated, the the desired user action will be taken
   -h, --help                     help for watch
   -i, --interval int             Interval (in seconds) to wait in between watching a selector (default 30)
       --wait_selectors strings   All selectors, in order of URLs passed in, to wait for
@@ -95,7 +95,7 @@ Global Flags:
   -a, --agent string                 User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
       --check_selectors strings      Selectors that are used to check for the given expected_texts
       --config string                config file (default is $HOME/.go-dynamic-fetch.yaml)
-      --expected_texts strings       Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check_selectors passed in (in order)
+      --expected_texts strings       Pieces of texts that represent the normal state of an item - when the status is updated, the the desired user action will be taken
       --headless                     Use headless shell
   -i, --interval int                 Interval (in seconds) to wait in between watching a selector (default 30)
   -t, --timeout int                  Timeout for context - if none is specified a default background context will be used (default -1)
