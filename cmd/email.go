@@ -42,14 +42,7 @@ var emailCmd = &cobra.Command{
 			return fmt.Errorf("Please specify to email address")
 		}
 
-		envPassword := viper.GetString("sender-password-env")
-		if len(envPassword) == 0 {
-			return fmt.Errorf("We require a sender email password environment variable")
-		}
-		if err := viper.BindEnv(envPassword); err != nil {
-			return err
-		}
-		password := viper.GetString(envPassword)
+		password := viper.GetString("email_password")
 		if len(password) == 0 {
 			return fmt.Errorf("We require a non-empty sender email password")
 		}
@@ -67,5 +60,5 @@ func init() {
 	emailCmd.Flags().String("subject", fetcher.DefaultSubject, "Subject to be specified")
 	emailCmd.Flags().String("from", "", "Email address to send message from")
 	emailCmd.Flags().String("to", "", "Email address to send message to")
-	emailCmd.Flags().String("sender-password-env", "", "Password for the from email specified (specify as an environment variable)")
+	emailCmd.Flags().String("email_password", "", "Password for the from email specified (specify as an environment variable)")
 }

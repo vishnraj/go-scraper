@@ -41,10 +41,10 @@ func init() {
 	rootCmd.AddCommand(watchCmd)
 
 	watchCmd.PersistentFlags().StringSlice("urls", nil, "All URLs to watch")
-	watchCmd.PersistentFlags().StringSlice("wait-selectors", nil, "All selectors, in order of URLs passed in, to wait for")
+	watchCmd.PersistentFlags().StringSlice("wait_selectors", nil, "All selectors, in order of URLs passed in, to wait for")
 
-	watchCmd.PersistentFlags().StringSlice("check-selectors", nil, "Selectors that are used to check for the given expected-texts")
-	watchCmd.PersistentFlags().StringSlice("expected-texts", nil, "Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check-selectors passed in (in order)")
+	watchCmd.PersistentFlags().StringSlice("check_selectors", nil, "Selectors that are used to check for the given expected_texts")
+	watchCmd.PersistentFlags().StringSlice("expected_texts", nil, "Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check_selectors passed in (in order)")
 
 	watchCmd.PersistentFlags().IntP("interval", "i", fetcher.DefaultInterval, "Interval (in seconds) to wait in between watching a selector")
 }
