@@ -42,7 +42,6 @@ func init() {
 
 	watchCmd.PersistentFlags().StringSlice("urls", nil, "All URLs to watch")
 	watchCmd.PersistentFlags().StringSlice("wait-selectors", nil, "All selectors, in order of URLs passed in, to wait for")
-	watchCmd.PersistentFlags().Bool("wait-error-dump", false, "If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log")
 
 	watchCmd.PersistentFlags().StringSlice("check-selectors", nil, "Selectors that are used to check for the given expected-texts")
 	watchCmd.PersistentFlags().StringSlice("expected-texts", nil, "Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check-selectors passed in (in order)")

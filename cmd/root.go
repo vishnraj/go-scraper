@@ -17,7 +17,6 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/vishnraj/go-dynamic-fetch/fetcher"
@@ -40,8 +39,7 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		fetcher.Log().Panicf("%v", err)
 	}
 }
 
@@ -56,6 +54,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("headless", false, "Use headless shell")
 	rootCmd.PersistentFlags().StringP("agent", "a", fetcher.DefaultUserAgent, "User agent to request as - if not specified the default is used")
 	rootCmd.PersistentFlags().IntP("timeout", "t", -1, "Timeout for context - if none is specified a default background context will be used")
+	rootCmd.PersistentFlags().Bool("wait-error-dump", false, "If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -67,8 +66,7 @@ func initConfig() {
 		// Find working directory.
 		home, err := os.Getwd()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			fetcher.Log().Panicf("%v", err)
 		}
 
 		// Search config in home directory with name ".go-dynamic-fetch" (without extension).
@@ -80,6 +78,6 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		fetcher.Log().Infof("Using config file: %s", viper.ConfigFileUsed())
 	}
 }
