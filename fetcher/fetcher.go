@@ -373,6 +373,7 @@ func setOpt() ([]func(*chromedp.ExecAllocator), error) {
 			chromedp.Flag("headless", true),
 			chromedp.Flag("disable-gpu", true),
 			chromedp.Flag("no-sandbox", true),
+			chromedp.Flag("allow-insecure-localhost", true),
 		}
 	}
 
