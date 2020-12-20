@@ -37,7 +37,7 @@ var fetchCmd = &cobra.Command{
 			return fmt.Errorf("We require a non-empty URL")
 		}
 
-		return nil
+		return fetcher.CommonRootChecks(cmd)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		fetcher.PrintContent(cmd)

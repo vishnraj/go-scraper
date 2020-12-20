@@ -33,7 +33,11 @@ var (
 		"watch": &watchExecutor{},
 	}
 
-	gLog *logger.Logger
+	gLog    *logger.Logger
+	gAgents = []string{}
+
+	gSelectedAgents = map[string]string{}
+	gWorkingAgents  = map[string]string{}
 )
 
 type actionGenerator interface {
@@ -114,7 +118,19 @@ func (n navigateActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 			err := chromedp.Navigate(n.url).Do(ctx)
 			if err != nil {
 				Log().Errorf("%v", err)
+				// suspecting it's a user agent issue, so we unset any working agent that may have failed at this point
+				if len(gWorkingAgents[n.url]) != 0 {
+					Log().Errorf("User-agent [%s] for URL [%s] no longer working, will unset it and try a different one on the next request", gWorkingAgents[n.url], n.url)
+					gWorkingAgents[n.url] = ""
+				}
+			} else {
+				// if a navigate succeeded, we pick the selected agent from that request as the working one
+				if len(gWorkingAgents[n.url]) == 0 {
+					Log().Errorf("User-agent [%s] for URL [%s] succeeded, so it will be set as the current working agent", gSelectedAgents[n.url], n.url)
+					gWorkingAgents[n.url] = gSelectedAgents[n.url]
+				}
 			}
+
 			return err
 		}))
 	return actions
@@ -216,14 +232,16 @@ func (e emailActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 					return err
 				}
 
-				if res == e.expectedText {
+				if res != e.expectedText {
+					Log().Infof("Result found for URL [%s] was [%s], which has been updated from the original value of expected text [%s] so we will perform the desired action!", e.url, res, e.expectedText)
 					go func() {
 						e.postActionData <- emailData{URL: e.url, Text: res}
 					}()
 				} else {
-					Log().Infof("Result found for URL [%s] was [%s] instead of [%s]", e.url, res, e.expectedText)
+					Log().Infof("Result found for URL [%s] was still [%s], which matches the expected text [%s], so we take no action", e.url, res, e.expectedText)
 				}
 			} else {
+				Log().Infof("We were simply told to wait for a page load so we could take action for URL [%s] - this condition has been met, so we are now performing the desired action", e.url)
 				go func() {
 					e.postActionData <- emailData{URL: e.url}
 				}()
@@ -250,7 +268,7 @@ func (f *fetchExecutor) Init(actionGens [][]actionGenerator, urls []string) {
 
 func (f *fetchExecutor) Execute() {
 	for i, a := range f.actions {
-		err := run(a)
+		err := run(a, f.urls[i])
 		if err != nil {
 			Log().Errorf("For URL [%s], received error [%v]", f.urls[i], err)
 		}
@@ -277,7 +295,7 @@ func (w *watchExecutor) Init(actionGens [][]actionGenerator, urls []string) {
 
 func (w *watchExecutor) Execute() {
 	for i, a := range w.actions {
-		err := run(a)
+		err := run(a, w.urls[i])
 		if err != nil {
 			Log().Errorf("Data for %s was not available during this check - received error %s\n", w.urls[i], err.Error())
 		}
@@ -287,7 +305,7 @@ func (w *watchExecutor) Execute() {
 		select {
 		case _ = <-ticker.C:
 			for i, a := range w.actions {
-				err := run(a)
+				err := run(a, w.urls[i])
 				if err != nil {
 					Log().Errorf("Data for %s was not available during this check - received error %s\n", w.urls[i], err.Error())
 				}
@@ -368,14 +386,16 @@ func getAgent(agents []string) string {
 	return agents[index]
 }
 
-func setOpt() ([]func(*chromedp.ExecAllocator), error) {
-	agents := viper.GetStringSlice("agents")
-	if len(agents) == 0 {
-		agents = DefaultUserAgents
+func setOpt(targetURL string) ([]func(*chromedp.ExecAllocator), error) {
+	var agent string
+	if len(gWorkingAgents[targetURL]) == 0 {
+		gSelectedAgents[targetURL] = getAgent(gAgents)
+		agent = gSelectedAgents[targetURL]
+		Log().Infof("No working agent for URL [%s], so using selected user-agent [%s] for this attempt", targetURL, agent)
+	} else {
+		agent = gWorkingAgents[targetURL]
+		Log().Infof("Last working agent was [%s] for URL [%s], so will continue using it", agent, targetURL)
 	}
-	Log().Infof("Running with agents [%s]", agents)
-	agent := getAgent(agents)
-	Log().Infof("Selected with agent [%s]", agent)
 
 	runHeadless := viper.GetBool("headless")
 	var opts []func(*chromedp.ExecAllocator)
@@ -418,8 +438,8 @@ func createChromeContext(opts []func(*chromedp.ExecAllocator)) (context.Context,
 	return ctx, cancel
 }
 
-func run(actions chromedp.Tasks) error {
-	opts, err := setOpt()
+func run(actions chromedp.Tasks, targetURL string) error {
+	opts, err := setOpt(targetURL)
 	if err != nil {
 		return err
 	}
@@ -446,6 +466,20 @@ func Log() *logger.Logger {
 	}
 
 	return gLog
+}
+
+// CommonRootChecks does checks for flags for root commands
+func CommonRootChecks(cmd *cobra.Command) error {
+	viper.BindPFlags(cmd.Flags())
+
+	gAgents = viper.GetStringSlice("agents")
+	if len(gAgents) == 0 {
+		Log().Info("No user agents specified, setting to default")
+		gAgents = DefaultUserAgents
+	}
+	Log().Infof("Running with agents [%s]", gAgents)
+
+	return nil
 }
 
 // CommonWatchChecks checks if the common required flags for watch command are present - sub-commands check their own specific flags separately
@@ -477,7 +511,7 @@ func CommonWatchChecks(cmd *cobra.Command) error {
 		}
 	}
 
-	return nil
+	return CommonRootChecks(cmd)
 }
 
 // PrintContent fetches HTML content
