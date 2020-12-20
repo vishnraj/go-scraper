@@ -38,7 +38,7 @@ type actionGenerator interface {
 }
 
 type actionExecutor interface {
-	Init(actionGens [][]actionGenerator)
+	Init(actionGens [][]actionGenerator, urls []string)
 	Execute()
 }
 
@@ -232,8 +232,8 @@ func (e emailActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	return actions
 }
 
-func (f *fetchExecutor) Init(actionGens [][]actionGenerator) {
-	f.urls = viper.GetStringSlice("urls")
+func (f *fetchExecutor) Init(actionGens [][]actionGenerator, urls []string) {
+	f.urls = urls
 	f.errs = make(chan error)
 
 	for _, gens := range actionGens {
@@ -257,8 +257,8 @@ func (f *fetchExecutor) Execute() {
 	}
 }
 
-func (w *watchExecutor) Init(actionGens [][]actionGenerator) {
-	w.urls = viper.GetStringSlice("urls")
+func (w *watchExecutor) Init(actionGens [][]actionGenerator, urls []string) {
+	w.urls = urls
 	w.interval = viper.GetInt("interval")
 
 	Log().Infof("Will check for updates every %d seconds\n", w.interval)
@@ -504,7 +504,7 @@ func PrintContent(cmd *cobra.Command) {
 	actionGens[0] = append(actionGens[0], dumpActions{postActionData: fetchDumps, textSelector: t, url: u})
 
 	f := executors["fetch"].(*fetchExecutor)
-	f.Init(actionGens)
+	f.Init(actionGens, []string{u})
 	f.Execute()
 	if err := <-f.errs; err == nil {
 		data := <-fetchDumps
@@ -586,6 +586,6 @@ func EmailContent(cmd *cobra.Command) {
 	}
 
 	e := executors["watch"].(*watchExecutor)
-	e.Init(actionGens)
+	e.Init(actionGens, urls)
 	e.Execute() // blocks
 }
