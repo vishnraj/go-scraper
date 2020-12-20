@@ -122,6 +122,10 @@ func (w waitActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 		actions = append(actions,
 			chromedp.ActionFunc(func(ctx context.Context) error {
 				err := chromedp.WaitVisible(w.waitSelector).Do(ctx)
+				if err != nil {
+					Log().Errorf("%v", err)
+				}
+
 				if err != nil && (w.dumpOnError || w.locationOnError) {
 					select {
 					case d := <-w.errorDumps:
@@ -135,7 +139,6 @@ func (w waitActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 					default:
 						Log().Errorf("No content to dump for wait failure for URL [%s]", w.url)
 					}
-					Log().Errorf("%v", err)
 				} else if err == nil && (w.dumpOnError || w.locationOnError) {
 					// just read off the channel, so it's not there later
 					select {
