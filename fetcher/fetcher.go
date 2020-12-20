@@ -21,7 +21,7 @@ const (
 	DefaultSubject = "Go-Dynamic-Fetch Watcher"
 
 	// DefaultUserAgent The default user agent to send request as
-	DefaultUserAgent = "Moizilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36"
+	DefaultUserAgent = `Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36`
 )
 
 var (
