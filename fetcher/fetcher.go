@@ -106,7 +106,14 @@ type emailWatchFunc struct {
 }
 
 func (n navigateActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
-	actions = append(actions, chromedp.Navigate(n.url))
+	actions = append(actions,
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			err := chromedp.Navigate(n.url).Do(ctx)
+			if err != nil {
+				Log().Errorf("%v", err)
+			}
+			return err
+		}))
 	return actions
 }
 
@@ -128,6 +135,7 @@ func (w waitActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 					default:
 						Log().Errorf("No content to dump for wait failure for URL [%s]", w.url)
 					}
+					Log().Errorf("%v", err)
 				} else if err == nil && (w.dumpOnError || w.locationOnError) {
 					// just read off the channel, so it's not there later
 					select {
@@ -151,34 +159,39 @@ func (d dumpActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 			var err error
 
 			err = chromedp.Location(&currentURL).Do(ctx)
+			if err != nil {
+				Log().Errorf("%v", err)
+				return err
+			}
+
 			if len(d.textSelector) != 0 {
 				err = chromedp.Text(d.textSelector, &res).Do(ctx)
+				if err != nil {
+					Log().Errorf("%v", err)
+					return err
+				}
 			} else {
 				// by default, this will grab pretty much everything
 				var tmp string
 
 				err = chromedp.OuterHTML(`head`, &tmp, chromedp.ByQuery).Do(ctx)
 				if err != nil {
+					Log().Errorf("%v", err)
 					return err
 				}
 				res += tmp
 
 				err = chromedp.OuterHTML(`body`, &tmp, chromedp.ByQuery).Do(ctx)
 				if err != nil {
+					Log().Errorf("%v", err)
 					return err
 				}
 				res += tmp
 			}
 
-			if err == nil {
-				go func() {
-					d.postActionData <- dumpData{URL: currentURL, ExtractText: res}
-				}()
-			} else {
-				go func() {
-					d.postActionData <- dumpData{}
-				}()
-			}
+			go func() {
+				d.postActionData <- dumpData{URL: currentURL, ExtractText: res}
+			}()
 
 			return err
 		}))
@@ -193,6 +206,7 @@ func (e emailActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 				var res string
 				err := chromedp.Text(e.checkSelector, &res).Do(ctx)
 				if err != nil {
+					Log().Errorf("%v", err)
 					return err
 				}
 
