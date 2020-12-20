@@ -121,7 +121,8 @@ func (w waitActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 						if w.dumpOnError {
 							Log().Errorf("Dumping content for URL [%s]:", w.url)
 							fmt.Printf("%s", d.ExtractText)
-						} else if w.locationOnError {
+						}
+						if w.locationOnError {
 							Log().Errorf("Logging the current URL location as [%s] for our original target [%s]", d.URL, w.url)
 						}
 					default:
@@ -420,7 +421,7 @@ func CommonWatchChecks(cmd *cobra.Command) error {
 		return fmt.Errorf("We require a non-empty comma separated slice of URL(s)")
 	}
 
-	waitSelectors := viper.GetStringSlice("wait-selectors")
+	waitSelectors := viper.GetStringSlice("wait_selectors")
 	if waitSelectors == nil {
 		return fmt.Errorf("We require a non-empty comma separated slice of selector(s)")
 	}
@@ -430,13 +431,13 @@ func CommonWatchChecks(cmd *cobra.Command) error {
 	}
 
 	// these are optional
-	if (viper.IsSet("check-selectors") && !viper.IsSet("expected-texts")) || (!viper.IsSet("check-selectors") && viper.IsSet("expected-texts")) {
-		return fmt.Errorf("Specify both check-selectors and expected-texts or neither")
-	} else if viper.IsSet("check-selectors") {
-		checkSelectors := viper.GetStringSlice("check-selectors")
-		expectedTexts := viper.GetStringSlice("expected-texts")
+	if (viper.IsSet("check_selectors") && !viper.IsSet("expected_texts")) || (!viper.IsSet("check_selectors") && viper.IsSet("expected_texts")) {
+		return fmt.Errorf("Specify both check_selectors and expected_texts or neither")
+	} else if viper.IsSet("check_selectors") {
+		checkSelectors := viper.GetStringSlice("check_selectors")
+		expectedTexts := viper.GetStringSlice("expected_texts")
 		if len(urls) != len(checkSelectors) || len(checkSelectors) != len(expectedTexts) {
-			return fmt.Errorf("expected-texts and check-selectors must be the same length and match the number of URLs specified, invalid check-selectors length [%d], expected-texts length [%d] and URLs length is [%d]", len(checkSelectors), len(expectedTexts), len(urls))
+			return fmt.Errorf("expected_texts and check_selectors must be the same length and match the number of URLs specified, invalid check_selectors length [%d], expected_texts length [%d] and URLs length is [%d]", len(checkSelectors), len(expectedTexts), len(urls))
 		}
 	}
 
@@ -448,17 +449,17 @@ func PrintContent(cmd *cobra.Command) {
 	viper.BindPFlags(cmd.Flags())
 
 	u := viper.GetString("url")
-	w := viper.GetString("wait-selector")
+	w := viper.GetString("wait_selector")
 
-	waitErrorDump := viper.GetBool("wait-error-dump")
-	waitErrorLocation := viper.GetBool("wait-error-location")
+	waitErrorDump := viper.GetBool("wait_error_dump")
+	waitErrorLocation := viper.GetBool("wait_error_location")
 
 	Log().Infof("Fetching content from: %s", u)
 	if len(w) != 0 {
 		Log().Infof("Waiting on selector: %s", w)
 	}
 
-	t := viper.GetString("text-selector")
+	t := viper.GetString("text_selector")
 
 	if len(t) != 0 {
 		Log().Infof("Will print text for %s", t)
@@ -501,13 +502,11 @@ func EmailContent(cmd *cobra.Command) {
 	to := viper.GetString("to")
 
 	urls := viper.GetStringSlice("urls")
-	waitSelectors := viper.GetStringSlice("wait-selectors")
-	waitErrorDump := viper.GetBool("wait-error-dump")
-	waitErrorLocation := viper.GetBool("wait-error-location")
+	waitSelectors := viper.GetStringSlice("wait_selectors")
+	waitErrorDump := viper.GetBool("wait_error_dump")
+	waitErrorLocation := viper.GetBool("wait_error_location")
 
-	envPassword := viper.GetString("sender-password-env")
-	viper.BindEnv(envPassword)
-	password := viper.GetString(envPassword)
+	password := viper.GetString("email_password")
 
 	Log().Infof("Sending with subject %s", subject)
 	Log().Infof("Sending from email %s", from)
@@ -525,12 +524,12 @@ func EmailContent(cmd *cobra.Command) {
 
 	var checkSelectors []string
 	var expectedTexts []string
-	if viper.IsSet("check-selectors") && viper.IsSet("expected-texts") {
-		checkSelectors = viper.GetStringSlice("check-selectors")
-		expectedTexts = viper.GetStringSlice("expected-texts")
+	if viper.IsSet("check_selectors") && viper.IsSet("expected_texts") {
+		checkSelectors = viper.GetStringSlice("check_selectors")
+		expectedTexts = viper.GetStringSlice("expected_texts")
 
-		Log().Infof("Using check-selectors %v", checkSelectors)
-		Log().Infof("Using expected-texts %v", expectedTexts)
+		Log().Infof("Using check_selectors %v", checkSelectors)
+		Log().Infof("Using expected_texts %v", expectedTexts)
 	}
 
 	emailMetaData := make(chan emailData)

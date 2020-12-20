@@ -22,8 +22,8 @@ Flags:
       --headless               Use headless shell
   -h, --help                   help for go-dynamic-fetch
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
-      --wait-error-dump        If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
-      --wait-error-location    If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
+      --wait_error_dump        If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
+      --wait_error_location    If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
 
 Use "go-dynamic-fetch [command] --help" for more information about a command.
 ```
@@ -46,8 +46,8 @@ Global Flags:
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
       --headless               Use headless shell
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
-      --wait-error-dump        If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
-      --wait-error-location    If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
+      --wait_error_dump        If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
+      --wait_error_location    If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
 ```
 
 ## Watch
@@ -61,11 +61,11 @@ Available Commands:
   email       Emails if the desired criteria is met in watch
 
 Flags:
-      --check-selectors strings   Selectors that are used to check for the given expected-texts
-      --expected-texts strings    Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check-selectors passed in (in order)
+      --check_selectors strings   Selectors that are used to check for the given expected-texts
+      --expected_texts strings    Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check_selectors passed in (in order)
   -h, --help                     help for watch
   -i, --interval int             Interval (in seconds) to wait in between watching a selector (default 30)
-      --wait-selectors strings   All selectors, in order of URLs passed in, to wait for
+      --wait_selectors strings   All selectors, in order of URLs passed in, to wait for
       --urls strings             All URLs to watch
 
 Global Flags:
@@ -73,8 +73,8 @@ Global Flags:
       --config string            config file (default is $HOME/.go-dynamic-fetch.yaml)
       --headless                 Use headless shell
   -t, --timeout int              Timeout for context - if none is specified a default background context will be used (default -1)
-      --wait-error-dump          If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
-      --wait-error-location      If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
+      --wait_error_dump          If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
+      --wait_error_location      If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
 ```
 
 ## Email
@@ -87,22 +87,22 @@ Usage:
 Flags:
       --from string                  Email address to send message from
   -h, --help                         help for email
-      --sender-password-env string   Password for the from email specified (specify as an environment variable)
+      --sender_password_env string   Password for the from email specified (specify as an environment variable)
       --subject string               Subject to be specified (default "Go-Dynamic-Fetch Watcher")
       --to string                    Email address to send message to
 
 Global Flags:
   -a, --agent string                 User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
-      --check-selectors strings      Selectors that are used to check for the given expected-texts
+      --check_selectors strings      Selectors that are used to check for the given expected_texts
       --config string                config file (default is $HOME/.go-dynamic-fetch.yaml)
-      --expected-texts strings       Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check-selectors passed in (in order)
+      --expected_texts strings       Pieces of texts that we are looking for in order to confirm a given state on a page is met, which correspond to the check_selectors passed in (in order)
       --headless                     Use headless shell
   -i, --interval int                 Interval (in seconds) to wait in between watching a selector (default 30)
   -t, --timeout int                  Timeout for context - if none is specified a default background context will be used (default -1)
       --urls strings                 All URLs to watch
-      --wait-error-dump              If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
-      --wait-error-location    If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
-      --wait-selectors strings       All selectors, in order of URLs passed in, to wait for
+      --wait_error_dump              If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
+      --wait_error_location    If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
+      --wait_selectors strings       All selectors, in order of URLs passed in, to wait for
 ```
 
 # Examples
@@ -112,7 +112,7 @@ be installed on the machine you run this from
 
 ## Command-line args fetch all content example:
 ```
-go-dynamic-fetch --headless -t '10' fetch -u 'https://www.dsw.ca/en/ca/browse/sneakers/' --wait-selector
+go-dynamic-fetch --headless -t '10' fetch -u 'https://www.dsw.ca/en/ca/browse/sneakers/' --wait_selector
 '.result-list' | cascadia -i -o -c 'div.result-list__tiles' -p Name='div.product-tile__detail-text' -p Price='div.product-pric
 e' -d ','
 2020/11/26 06:02:00 Fetching content from: https://www.dsw.ca/en/ca/browse/sneakers/
@@ -130,7 +130,7 @@ Women's Ward Sneaker,   $79.96    ,
 ## Command-line args fetch print text example:
 ```
 go-dynamic-fetch --headless -t '10' fetch -u 'https://walmart.com/ip/Spider-Man-Miles-Morales-Launch-Edit
-ion-Sony-PlayStation-5/238397352' --wait-selector 'div.prod-product-cta-add-to-cart.display-inline-block' --text-selector 'spa
+ion-Sony-PlayStation-5/238397352' --wait_selector 'div.prod-product-cta-add-to-cart.display-inline-block' --text_selector 'spa
 n.spin-button-children'
 2020/11/26 06:03:03 Fetching content from: https://walmart.com/ip/Spider-Man-Miles-Morales-Launch-Edition-Sony-PlayStation-5/238397352
 2020/11/26 06:03:03 Timeout specified: 10s
@@ -141,7 +141,7 @@ Add to cart
 
 ## Command-line args watch and email example:
 ```
-go-dynamic-fetch --headless -t 10 watch --urls 'https://walmart.com/ip/Spider-Man-Miles-Morales-Launch-Edition-Sony-PlayStation-5/238397352' --wait-selectors 'div.prod-product-cta-add-to-cart.display-inline-block' -i 30 email --from 'vrajendrantester@gmail.com' --to 'vishnu.raj.1993@gmail.com' --sender-password-env EMAIL_PASSWORD
+go-dynamic-fetch --headless -t 10 watch --urls 'https://walmart.com/ip/Spider-Man-Miles-Morales-Launch-Edition-Sony-PlayStation-5/238397352' --wait_selectors 'div.prod-product-cta-add-to-cart.display-inline-block' -i 30 email --from 'vrajendrantester@gmail.com' --to 'vishnu.raj.1993@gmail.com'
 2020/11/26 22:43:44 Sending with subject Go-Dynamic-Fetch Watcher
 2020/11/26 22:43:44 Sending from email vrajendrantester@gmail.com
 2020/11/26 22:43:44 Sending to email vishnu.raj.1993@gmail.com
