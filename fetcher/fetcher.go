@@ -126,7 +126,7 @@ func (n navigateActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 			} else {
 				// if a navigate succeeded, we pick the selected agent from that request as the working one
 				if len(gWorkingAgents[n.url]) == 0 {
-					Log().Errorf("User-agent [%s] for URL [%s] succeeded, so it will be set as the current working agent", gSelectedAgents[n.url], n.url)
+					Log().Infof("User-agent [%s] for URL [%s] succeeded, so it will be set as the current working agent", gSelectedAgents[n.url], n.url)
 					gWorkingAgents[n.url] = gSelectedAgents[n.url]
 				}
 			}
