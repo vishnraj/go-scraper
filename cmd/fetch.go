@@ -50,4 +50,5 @@ func init() {
 	fetchCmd.Flags().StringP("url", "u", "", "URL that you are fetching HTML content for")
 	fetchCmd.Flags().String("wait_selector", "", "Selector for element to wait for - if not specified we do not wait and just dump static elements")
 	fetchCmd.Flags().String("text_selector", "", "Gets and prints text for the desired selector and if not specified dump all content retrieved")
+	fetchCmd.Flags().String("href_selector", "", "Gets the nodes that match the specific selector")
 }

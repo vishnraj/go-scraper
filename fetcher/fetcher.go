@@ -3,12 +3,14 @@ package fetcher
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/smtp"
 	"time"
 
 	"github.com/apsdehal/go-logger"
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -76,6 +78,7 @@ type dumpActions struct {
 	postActionData chan dumpData
 
 	textSelector string
+	hrefSelector string
 
 	url string
 }
@@ -84,6 +87,7 @@ type emailActions struct {
 	postActionData chan emailData
 
 	checkSelector string
+	checkType     string
 	expectedText  string
 
 	url string
@@ -192,6 +196,19 @@ func (d dumpActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 					Log().Errorf("%v", err)
 					return err
 				}
+			} else if len(d.hrefSelector) != 0 {
+				var nodes []*cdp.Node
+				err = chromedp.Nodes(d.hrefSelector, &nodes).Do(ctx)
+				if err != nil {
+					Log().Errorf("%v", err)
+					return err
+				}
+				if len(nodes) == 0 {
+					err = errors.New("No nodes returned for selector")
+					Log().Errorf("%v", err)
+					return err
+				}
+				res = nodes[0].AttributeValue("href")
 			} else {
 				// by default, this will grab pretty much everything
 				var tmp string
@@ -226,9 +243,32 @@ func (e emailActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			if len(e.checkSelector) != 0 && len(e.expectedText) != 0 {
 				var res string
-				err := chromedp.Text(e.checkSelector, &res).Do(ctx)
-				if err != nil {
-					Log().Errorf("%v", err)
+				switch e.checkType {
+				case "text":
+					err := chromedp.Text(e.checkSelector, &res).Do(ctx)
+					if err != nil {
+						Log().Errorf("%v", err)
+						return err
+					}
+					break
+				case "href":
+					var nodes []*cdp.Node
+					err := chromedp.Nodes(e.checkSelector, &nodes).Do(ctx)
+					if err != nil {
+						Log().Errorf("%v", err)
+						return err
+					}
+					if len(nodes) == 0 {
+						err = errors.New("No nodes returned for selector")
+						Log().Errorf("%v", err)
+						return err
+					}
+					res = nodes[0].AttributeValue("href")
+					break
+				case "none":
+				default:
+					err := errors.New("For none or default we do nothing, but we shouldn't be here since for non-supported cases or none cases, we don't have an expected text to check - we are not taking any action")
+					Log().ErrorF("%v", err)
 					return err
 				}
 
@@ -487,28 +527,38 @@ func CommonWatchChecks(cmd *cobra.Command) error {
 	viper.BindPFlags(cmd.Flags())
 
 	urls := viper.GetStringSlice("urls")
-	if urls == nil {
-		return fmt.Errorf("We require a non-empty comma separated slice of URL(s)")
+	if len(urls) == 0 {
+		return fmt.Errorf("We require a non-empty slice of URLs")
 	}
-
 	waitSelectors := viper.GetStringSlice("wait_selectors")
-	if waitSelectors == nil {
-		return fmt.Errorf("We require a non-empty comma separated slice of selector(s)")
+	if len(waitSelectors) == 0 {
+		return fmt.Errorf("We require a non-empty slice of wait_selectors")
 	}
 
-	if len(urls) == 0 || len(urls) != len(waitSelectors) {
-		return fmt.Errorf("Number of URLs and selectors passed in must have the same length and be non-zero")
+	checkSelectors := viper.GetStringSlice("check_selectors")
+	if len(checkSelectors) == 0 {
+		return fmt.Errorf("We require a non-empty slice of check_selectors")
+	}
+	checkTypes := viper.GetStringSlice("check_types")
+	if len(checkTypes) == 0 {
+		return fmt.Errorf("We require a non-empty slice of check_types")
+	}
+	expectedTexts := viper.GetStringSlice("expected_texts")
+	if len(expectedTexts) == 0 {
+		return fmt.Errorf("We require a non-empty slice of expected_texts")
 	}
 
-	// these are optional
-	if (viper.IsSet("check_selectors") && !viper.IsSet("expected_texts")) || (!viper.IsSet("check_selectors") && viper.IsSet("expected_texts")) {
-		return fmt.Errorf("Specify both check_selectors and expected_texts or neither")
-	} else if viper.IsSet("check_selectors") {
-		checkSelectors := viper.GetStringSlice("check_selectors")
-		expectedTexts := viper.GetStringSlice("expected_texts")
-		if len(urls) != len(checkSelectors) || len(checkSelectors) != len(expectedTexts) {
-			return fmt.Errorf("expected_texts and check_selectors must be the same length and match the number of URLs specified, invalid check_selectors length [%d], expected_texts length [%d] and URLs length is [%d]", len(checkSelectors), len(expectedTexts), len(urls))
-		}
+	if len(urls) != len(waitSelectors) {
+		return fmt.Errorf("Number of URLs and wait_selectors passed in must have the same length")
+	}
+	if len(urls) != len(checkSelectors) {
+		return fmt.Errorf("Number of URLs and check_selectors passed in must have the same length")
+	}
+	if len(urls) != len(checkTypes) {
+		return fmt.Errorf("Number of URLs and check_types passed in must have the same length")
+	}
+	if len(urls) != len(expectedTexts) {
+		return fmt.Errorf("Number of URLs and expected_texts passed in must have the same length")
 	}
 
 	return CommonRootChecks(cmd)
@@ -524,15 +574,18 @@ func PrintContent(cmd *cobra.Command) {
 	waitErrorDump := viper.GetBool("wait_error_dump")
 	waitErrorLocation := viper.GetBool("wait_error_location")
 
-	Log().Infof("Fetching content from: %s", u)
+	Log().Infof("Fetching content from: [%s]", u)
 	if len(w) != 0 {
-		Log().Infof("Waiting on selector: %s", w)
+		Log().Infof("Waiting on selector: [%s]", w)
 	}
 
 	t := viper.GetString("text_selector")
-
 	if len(t) != 0 {
-		Log().Infof("Will print text for %s", t)
+		Log().Infof("Will print text for: [%s]", t)
+	}
+	h := viper.GetString("href_selector")
+	if len(h) != 0 {
+		Log().Infof("Will dump data for href selector: [%s]", h)
 	}
 
 	if waitErrorDump {
@@ -552,7 +605,7 @@ func PrintContent(cmd *cobra.Command) {
 		actionGens[0] = append(actionGens[0], dumpActions{postActionData: errorDumps, url: u})
 	}
 	actionGens[0] = append(actionGens[0], waitActions{url: u, waitSelector: w, dumpOnError: waitErrorDump, locationOnError: waitErrorLocation, errorDumps: errorDumps})
-	actionGens[0] = append(actionGens[0], dumpActions{postActionData: fetchDumps, textSelector: t, url: u})
+	actionGens[0] = append(actionGens[0], dumpActions{postActionData: fetchDumps, textSelector: t, hrefSelector: h, url: u})
 
 	f := executors["fetch"].(*fetchExecutor)
 	f.Init(actionGens, []string{u})
@@ -593,12 +646,15 @@ func EmailContent(cmd *cobra.Command) {
 	}
 
 	var checkSelectors []string
+	var checkTypes []string
 	var expectedTexts []string
-	if viper.IsSet("check_selectors") && viper.IsSet("expected_texts") {
+	if viper.IsSet("check_selectors") && viper.IsSet("check_types") && viper.IsSet("expected_texts") {
 		checkSelectors = viper.GetStringSlice("check_selectors")
+		checkTypes = viper.GetStringSlice("check_types")
 		expectedTexts = viper.GetStringSlice("expected_texts")
 
 		Log().Infof("Using check_selectors %v", checkSelectors)
+		Log().Infof("Using check_types %v", checkTypes)
 		Log().Infof("Using expected_texts %v", expectedTexts)
 	}
 
@@ -631,6 +687,7 @@ func EmailContent(cmd *cobra.Command) {
 		e := emailActions{postActionData: emailMetaData, url: u}
 		if checkSelectors != nil && expectedTexts != nil {
 			e.checkSelector = checkSelectors[i]
+			e.checkType = checkTypes[i]
 			e.expectedText = expectedTexts[i]
 		}
 		actionGens[i] = append(actionGens[i], e)
