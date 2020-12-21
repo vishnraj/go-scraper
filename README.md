@@ -37,10 +37,11 @@ Usage:
 
 Flags:
   -h, --help                   help for fetch
-      --href_selector string   Gets the nodes that match the specific selector
-      --text_selector string   Gets and prints text for the desired selector and if not specified dump all content retrieved
+      --href_selector string   Gets the first href for the node that match the specific selector
+      --id_selector string     Gets the text that matches the specific selector by id
+      --text_selector string   Gets and prints text for the desired selector and if not specified dump all content retrieved - can specify either an xpath or a css selector
   -u, --url string             URL that you are fetching HTML content for
-      --wait_selector string   Selector for element to wait for - if not specified we do not wait and just dump static elements
+      --wait_selector string   Selector for element to wait for - if not specified we do not wait and just dump static elements - can specify either an xpath or a css selector
 
 Global Flags:
   -a, --agent string           User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")

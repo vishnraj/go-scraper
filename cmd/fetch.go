@@ -48,7 +48,8 @@ func init() {
 	rootCmd.AddCommand(fetchCmd)
 
 	fetchCmd.Flags().StringP("url", "u", "", "URL that you are fetching HTML content for")
-	fetchCmd.Flags().String("wait_selector", "", "Selector for element to wait for - if not specified we do not wait and just dump static elements")
-	fetchCmd.Flags().String("text_selector", "", "Gets and prints text for the desired selector and if not specified dump all content retrieved")
-	fetchCmd.Flags().String("href_selector", "", "Gets the nodes that match the specific selector")
+	fetchCmd.Flags().String("wait_selector", "", "Selector for element to wait for - if not specified we do not wait and just dump static elements - can specify either an xpath or a css selector")
+	fetchCmd.Flags().String("text_selector", "", "Gets and prints text for the desired selector and if not specified dump all content retrieved - can specify either an xpath or a css selector")
+	fetchCmd.Flags().String("href_selector", "", "Gets the first href for the node that match the specific selector")
+	fetchCmd.Flags().String("id_selector", "", "Gets the text that matches the specific selector by id")
 }

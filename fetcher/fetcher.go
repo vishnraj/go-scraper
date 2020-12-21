@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/smtp"
+	"strings"
 	"time"
 
 	"github.com/apsdehal/go-logger"
@@ -79,6 +80,7 @@ type dumpActions struct {
 
 	textSelector string
 	hrefSelector string
+	idSelector   string
 
 	url string
 }
@@ -191,41 +193,26 @@ func (d dumpActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 			}
 
 			if len(d.textSelector) != 0 {
-				err = chromedp.Text(d.textSelector, &res).Do(ctx)
+				res, err = extractData(ctx, d.textSelector, "text")
 				if err != nil {
-					Log().Errorf("%v", err)
 					return err
 				}
 			} else if len(d.hrefSelector) != 0 {
-				var nodes []*cdp.Node
-				err = chromedp.Nodes(d.hrefSelector, &nodes).Do(ctx)
+				res, err = extractData(ctx, d.hrefSelector, "href")
 				if err != nil {
-					Log().Errorf("%v", err)
 					return err
 				}
-				if len(nodes) == 0 {
-					err = errors.New("No nodes returned for selector")
-					Log().Errorf("%v", err)
+			} else if len(d.idSelector) != 0 {
+				res, err = extractData(ctx, d.idSelector, "id")
+				if err != nil {
 					return err
 				}
-				res = nodes[0].AttributeValue("href")
 			} else {
 				// by default, this will grab pretty much everything
-				var tmp string
-
-				err = chromedp.OuterHTML(`head`, &tmp, chromedp.ByQuery).Do(ctx)
+				res, err = extractData(ctx, "", "dump")
 				if err != nil {
-					Log().Errorf("%v", err)
 					return err
 				}
-				res += tmp
-
-				err = chromedp.OuterHTML(`body`, &tmp, chromedp.ByQuery).Do(ctx)
-				if err != nil {
-					Log().Errorf("%v", err)
-					return err
-				}
-				res += tmp
 			}
 
 			go func() {
@@ -242,37 +229,12 @@ func (e emailActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	actions = append(actions,
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			if len(e.checkSelector) != 0 && len(e.expectedText) != 0 {
-				var res string
-				switch e.checkType {
-				case "text":
-					err := chromedp.Text(e.checkSelector, &res).Do(ctx)
-					if err != nil {
-						Log().Errorf("%v", err)
-						return err
-					}
-					break
-				case "href":
-					var nodes []*cdp.Node
-					err := chromedp.Nodes(e.checkSelector, &nodes).Do(ctx)
-					if err != nil {
-						Log().Errorf("%v", err)
-						return err
-					}
-					if len(nodes) == 0 {
-						err = errors.New("No nodes returned for selector")
-						Log().Errorf("%v", err)
-						return err
-					}
-					res = nodes[0].AttributeValue("href")
-					break
-				case "none":
-				default:
-					err := errors.New("For none or default we do nothing, but we shouldn't be here since for non-supported cases or none cases, we don't have an expected text to check - we are not taking any action")
-					Log().ErrorF("%v", err)
+				res, err := extractData(ctx, e.checkSelector, e.checkType)
+				if err != nil {
 					return err
 				}
 
-				if res != e.expectedText {
+				if !strings.Contains(res, e.expectedText) {
 					Log().Infof("Result found for URL [%s] was [%s], which has been updated from the original value of expected text [%s] so we will perform the desired action!", e.url, res, e.expectedText)
 					go func() {
 						e.postActionData <- emailData{URL: e.url, Text: res}
@@ -415,6 +377,65 @@ func (e emailWatchFunc) sendEmail(data emailData) {
 	}
 
 	Log().Infof("Emailed %s successfully\n", e.toEmail)
+}
+
+func extractData(ctx context.Context, selector string, selectorType string) (string, error) {
+	var res string
+	switch selectorType {
+	case "text":
+		err := chromedp.Text(selector, &res).Do(ctx)
+		if err != nil {
+			Log().Errorf("%v", err)
+			return "", err
+		}
+		break
+	case "href":
+		var nodes []*cdp.Node
+		err := chromedp.Nodes(selector, &nodes).Do(ctx)
+		if err != nil {
+			Log().Errorf("%v", err)
+			return "", err
+		}
+		if len(nodes) == 0 {
+			err = errors.New("No nodes returned for selector")
+			Log().Errorf("%v", err)
+			return "", err
+		}
+		res = nodes[0].AttributeValue("href")
+		break
+	case "id":
+		err := chromedp.Text(selector, &res, chromedp.ByID).Do(ctx)
+		if err != nil {
+			Log().Errorf("%v", err)
+			return "", err
+		}
+		break
+	case "dump":
+		// by default, this will grab pretty much everything
+		var tmp string
+
+		err := chromedp.OuterHTML(`head`, &tmp, chromedp.ByQuery).Do(ctx)
+		if err != nil {
+			Log().Errorf("%v", err)
+			return "", err
+		}
+		res += tmp
+
+		err = chromedp.OuterHTML(`body`, &tmp, chromedp.ByQuery).Do(ctx)
+		if err != nil {
+			Log().Errorf("%v", err)
+			return "", err
+		}
+		res += tmp
+		break
+	case "none":
+	default:
+		err := errors.New("For none or default we do nothing, but we shouldn't be here since for non-supported cases or none cases, we don't have an expected text to check - we are not taking any action")
+		Log().ErrorF("%v", err)
+		return "", err
+	}
+
+	return res, nil
 }
 
 func getAgent(agents []string) string {
@@ -587,6 +608,10 @@ func PrintContent(cmd *cobra.Command) {
 	if len(h) != 0 {
 		Log().Infof("Will dump data for href selector: [%s]", h)
 	}
+	id := viper.GetString("id_selector")
+	if len(id) != 0 {
+		Log().Infof("Will dump data for id selector: [%s]", id)
+	}
 
 	if waitErrorDump {
 		Log().Info("Will dump out HTML page content on wait errors")
@@ -605,7 +630,7 @@ func PrintContent(cmd *cobra.Command) {
 		actionGens[0] = append(actionGens[0], dumpActions{postActionData: errorDumps, url: u})
 	}
 	actionGens[0] = append(actionGens[0], waitActions{url: u, waitSelector: w, dumpOnError: waitErrorDump, locationOnError: waitErrorLocation, errorDumps: errorDumps})
-	actionGens[0] = append(actionGens[0], dumpActions{postActionData: fetchDumps, textSelector: t, hrefSelector: h, url: u})
+	actionGens[0] = append(actionGens[0], dumpActions{postActionData: fetchDumps, textSelector: t, hrefSelector: h, idSelector: id, url: u})
 
 	f := executors["fetch"].(*fetchExecutor)
 	f.Init(actionGens, []string{u})
