@@ -517,7 +517,7 @@ func CommonRootChecks(cmd *cobra.Command) error {
 		Log().Info("No user agents specified, setting to default")
 		gAgents = DefaultUserAgents
 	}
-	Log().Infof("Running with agents [%s]", gAgents)
+	Log().Infof("Running with [%d] user-agents: [%s]", len(gAgents), gAgents)
 
 	return nil
 }
@@ -631,12 +631,12 @@ func EmailContent(cmd *cobra.Command) {
 
 	password := viper.GetString("email_password")
 
-	Log().Infof("Sending with subject %s", subject)
-	Log().Infof("Sending from email %s", from)
-	Log().Infof("Sending to email %s", to)
+	Log().Infof("Using email subject: [%s]", subject)
+	Log().Infof("Using from email: [%s]", from)
+	Log().Infof("Using to email: [%s]", to)
 
-	Log().Infof("Watching URLs %v", urls)
-	Log().Infof("Waiting on selectors %v", waitSelectors)
+	Log().Infof("Watching URLs: [%v]", urls)
+	Log().Infof("Waiting on selectors: [%v]", waitSelectors)
 
 	if waitErrorDump {
 		Log().Info("Will dump out HTML page content on wait errors")
@@ -645,18 +645,13 @@ func EmailContent(cmd *cobra.Command) {
 		Log().Info("Will log the current URL location on wait errors")
 	}
 
-	var checkSelectors []string
-	var checkTypes []string
-	var expectedTexts []string
-	if viper.IsSet("check_selectors") && viper.IsSet("check_types") && viper.IsSet("expected_texts") {
-		checkSelectors = viper.GetStringSlice("check_selectors")
-		checkTypes = viper.GetStringSlice("check_types")
-		expectedTexts = viper.GetStringSlice("expected_texts")
+	checkSelectors := viper.GetStringSlice("check_selectors")
+	checkTypes := viper.GetStringSlice("check_types")
+	expectedTexts := viper.GetStringSlice("expected_texts")
 
-		Log().Infof("Using check_selectors %v", checkSelectors)
-		Log().Infof("Using check_types %v", checkTypes)
-		Log().Infof("Using expected_texts %v", expectedTexts)
-	}
+	Log().Infof("Using check_selectors: [%v]", checkSelectors)
+	Log().Infof("Using check_types: [%v]", checkTypes)
+	Log().Infof("Using expected_texts: [%v]", expectedTexts)
 
 	emailMetaData := make(chan emailData)
 	postAction := emailWatchFunc{
