@@ -14,7 +14,7 @@ import (
 	"github.com/apsdehal/go-logger"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -542,13 +542,11 @@ func redisWorker(redisURL string, redisPassword string) {
 		case d := <-gWaitErrorDumps:
 			timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 			key := timestamp + "-" + d.URL
-			status := client.Set(key, d.ExtractText, 0)
-			if status != nil && status.Err() == nil {
+			err := client.Set(client.Context(), key, d.ExtractText, 0).Err()
+			if err == nil {
 				Log().Infof("For key [%s] redis write was successful", key)
-			} else if status != nil && status.Err() != nil {
-				Log().Errorf("For key [%s] error encountered: [%s]", key, status.Err())
-			} else if status == nil {
-				Log().Errorf("For key [%s] redis write status was nil", key)
+			} else {
+				Log().Errorf("For key [%s] error encountered during write: [%v]", key, err)
 			}
 		}
 	}
