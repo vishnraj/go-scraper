@@ -541,7 +541,7 @@ func redisWorker(redisURL string, redisPassword string, redisKeyExpiration int) 
 		select {
 		case d := <-gWaitErrorDumps:
 			timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-			key := timestamp + "-wait-errors-" + d.URL
+			key := "wait-errors-" + timestamp + "-" + d.URL
 			err := client.Set(client.Context(), key, d.ExtractText, time.Duration(redisKeyExpiration)*time.Second).Err()
 			if err == nil {
 				Log().Infof("For key [%s] redis write was successful", key)
