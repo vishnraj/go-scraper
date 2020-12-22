@@ -21,6 +21,8 @@ Flags:
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
       --headless               Use headless shell
   -h, --help                   help for go-dynamic-fetch
+  --redis_dump                 Set this option for all dumps to go to the redis database that we connet to this app
+  --redis_url string           If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
       --wait_error_dump        If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
       --wait_error_location    If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
@@ -47,6 +49,8 @@ Global Flags:
   -a, --agent string           User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
       --headless               Use headless shell
+      --redis_dump             Set this option for all dumps to go to the redis database that we connet to this app
+      --redis_url string       If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
       --wait_error_dump        If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
       --wait_error_location    If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
@@ -75,6 +79,8 @@ Global Flags:
   -a, --agent string             User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
       --config string            config file (default is $HOME/.go-dynamic-fetch.yaml)
       --headless                 Use headless shell
+      --redis_dump               Set this option for all dumps to go to the redis database that we connet to this app
+      --redis_url string         If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int              Timeout for context - if none is specified a default background context will be used (default -1)
       --wait_error_dump          If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
       --wait_error_location      If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
@@ -101,6 +107,8 @@ Global Flags:
       --config string                config file (default is $HOME/.go-dynamic-fetch.yaml)
       --expected_texts strings       Pieces of texts that represent the normal state of an item - when the status is updated, the the desired user action will be taken
       --headless                     Use headless shell
+      --redis_dump                   Set this option for all dumps to go to the redis database that we connet to this app
+      --redis_url string             If we want to send dumps to a redis database we must set a valid URL
   -i, --interval int                 Interval (in seconds) to wait in between watching a selector (default 30)
   -t, --timeout int                  Timeout for context - if none is specified a default background context will be used (default -1)
       --urls strings                 All URLs to watch
