@@ -532,7 +532,7 @@ func run(actions chromedp.Tasks, targetURL string) error {
 	return err
 }
 
-func redisWorker(redisURL string, redisPassword string) {
+func redisWorker(redisURL string, redisPassword string, redisKeyExpiration int) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     redisURL,
 		Password: redisPassword,
@@ -541,8 +541,8 @@ func redisWorker(redisURL string, redisPassword string) {
 		select {
 		case d := <-gWaitErrorDumps:
 			timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-			key := timestamp + "-" + d.URL
-			err := client.Set(client.Context(), key, d.ExtractText, 0).Err()
+			key := timestamp + "-wait-errors-" + d.URL
+			err := client.Set(client.Context(), key, d.ExtractText, time.Duration(redisKeyExpiration)*time.Second).Err()
 			if err == nil {
 				Log().Infof("For key [%s] redis write was successful", key)
 			} else {
@@ -664,8 +664,9 @@ func PrintContent(cmd *cobra.Command) {
 	if redisDumpOn {
 		redisURL := viper.GetString("redis_url")
 		redisPassword := viper.GetString("redis_password")
+		redisKeyExpiration := viper.GetInt("redis_key_expiration")
 		Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
-		go redisWorker(redisURL, redisPassword)
+		go redisWorker(redisURL, redisPassword, redisKeyExpiration)
 	}
 
 	fetchDumps := make(chan dumpData)
@@ -718,8 +719,9 @@ func EmailContent(cmd *cobra.Command) {
 	if redisDumpOn {
 		redisURL := viper.GetString("redis_url")
 		redisPassword := viper.GetString("redis_password")
+		redisKeyExpiration := viper.GetInt("redis_key_expiration")
 		Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
-		go redisWorker(redisURL, redisPassword)
+		go redisWorker(redisURL, redisPassword, redisKeyExpiration)
 	}
 
 	checkSelectors := viper.GetStringSlice("check_selectors")

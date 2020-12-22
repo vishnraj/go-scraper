@@ -60,6 +60,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("redis_dump", false, "Set this option for all dumps to go to the redis database that we connet to this app")
 	rootCmd.PersistentFlags().String("redis_url", "", "If we want to send dumps to a redis database we must set a valid URL")
 	rootCmd.PersistentFlags().String("redis_password", "", "If we need a password to login to the redis database, specify it")
+	rootCmd.PersistentFlags().Int("redis_key_expiration", 0, "The duration, in secondds that keys will remain in redis for - default value of zero makes this indefinite")
 }
 
 // initConfig reads in config file and ENV variables if set.
