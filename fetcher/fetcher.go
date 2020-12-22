@@ -751,7 +751,7 @@ func EmailContent(cmd *cobra.Command) {
 
 	for i, u := range urls {
 		actionGens[i] = append(actionGens[i], navigateActions{url: u})
-		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: waitErrorDump, locationOnError: waitErrorLocation})
+		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: waitErrorDump, locationOnError: waitErrorLocation, dumpToRedis: redisDumpOn})
 		e := emailActions{postActionData: emailMetaData, url: u}
 		if checkSelectors != nil && expectedTexts != nil {
 			e.checkSelector = checkSelectors[i]
