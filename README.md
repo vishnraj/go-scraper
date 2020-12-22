@@ -22,6 +22,7 @@ Flags:
       --headless               Use headless shell
   -h, --help                   help for go-dynamic-fetch
   --redis_dump                 Set this option for all dumps to go to the redis database that we connet to this app
+  --redis_password string      If we need a password to login to the redis database, specify it
   --redis_url string           If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
       --wait_error_dump        If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
@@ -50,6 +51,7 @@ Global Flags:
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
       --headless               Use headless shell
       --redis_dump             Set this option for all dumps to go to the redis database that we connet to this app
+      --redis_password string  If we need a password to login to the redis database, specify it
       --redis_url string       If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
       --wait_error_dump        If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
@@ -80,6 +82,7 @@ Global Flags:
       --config string            config file (default is $HOME/.go-dynamic-fetch.yaml)
       --headless                 Use headless shell
       --redis_dump               Set this option for all dumps to go to the redis database that we connet to this app
+      --redis_password string    If we need a password to login to the redis database, specify it
       --redis_url string         If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int              Timeout for context - if none is specified a default background context will be used (default -1)
       --wait_error_dump          If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
@@ -108,6 +111,7 @@ Global Flags:
       --expected_texts strings       Pieces of texts that represent the normal state of an item - when the status is updated, the the desired user action will be taken
       --headless                     Use headless shell
       --redis_dump                   Set this option for all dumps to go to the redis database that we connet to this app
+      --redis_password string        If we need a password to login to the redis database, specify it
       --redis_url string             If we want to send dumps to a redis database we must set a valid URL
   -i, --interval int                 Interval (in seconds) to wait in between watching a selector (default 30)
   -t, --timeout int                  Timeout for context - if none is specified a default background context will be used (default -1)

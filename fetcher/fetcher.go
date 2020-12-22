@@ -532,9 +532,10 @@ func run(actions chromedp.Tasks, targetURL string) error {
 	return err
 }
 
-func redisWorker(redisURL string) {
+func redisWorker(redisURL string, redisPassword string) {
 	client := redis.NewClient(&redis.Options{
-		Addr: redisURL,
+		Addr:     redisURL,
+		Password: redisPassword,
 	})
 	for {
 		select {
@@ -664,8 +665,9 @@ func PrintContent(cmd *cobra.Command) {
 	redisDumpOn := viper.GetBool("redis_dumps")
 	if redisDumpOn {
 		redisURL := viper.GetString("redis_url")
+		redisPassword := viper.GetString("redis_password")
 		Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
-		go redisWorker(redisURL)
+		go redisWorker(redisURL, redisPassword)
 	}
 
 	fetchDumps := make(chan dumpData)
@@ -717,8 +719,9 @@ func EmailContent(cmd *cobra.Command) {
 	redisDumpOn := viper.GetBool("redis_dumps")
 	if redisDumpOn {
 		redisURL := viper.GetString("redis_url")
+		redisPassword := viper.GetString("redis_password")
 		Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
-		go redisWorker(redisURL)
+		go redisWorker(redisURL, redisPassword)
 	}
 
 	checkSelectors := viper.GetStringSlice("check_selectors")
