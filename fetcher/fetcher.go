@@ -72,7 +72,6 @@ type waitActions struct {
 
 	locationOnError bool
 	dumpOnError     bool
-	errorDumps      chan dumpData
 }
 
 type dumpActions struct {
@@ -108,7 +107,6 @@ type watchExecutor struct {
 	actions  []chromedp.Tasks
 
 	dumpOnError bool
-	errorDumps  chan dumpData
 }
 
 type emailWatchFunc struct {
@@ -146,30 +144,36 @@ func (w waitActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	if len(w.waitSelector) != 0 {
 		actions = append(actions,
 			chromedp.ActionFunc(func(ctx context.Context) error {
-				err := chromedp.WaitVisible(w.waitSelector).Do(ctx)
+				var currentURL string
+				var res string
+				var err error
+
+				if w.locationOnError {
+					err = chromedp.Location(&currentURL).Do(ctx)
+					if err != nil {
+						Log().Errorf("%v", err)
+						return err
+					}
+				}
+				if w.dumpOnError {
+					res, err = extractData(ctx, "", "dump")
+					if err != nil {
+						Log().Errorf("%v", err)
+						return err
+					}
+				}
+
+				err = chromedp.WaitVisible(w.waitSelector).Do(ctx)
 				if err != nil {
 					Log().Errorf("%v", err)
 				}
 
-				if err != nil && (w.dumpOnError || w.locationOnError) {
-					select {
-					case d := <-w.errorDumps:
-						if w.dumpOnError {
-							Log().Errorf("Dumping content for URL [%s]:", w.url)
-							fmt.Printf("%s", d.ExtractText)
-						}
-						if w.locationOnError {
-							Log().Errorf("Logging the current URL location as [%s] for our original target [%s]", d.URL, w.url)
-						}
-					default:
-						Log().Errorf("No content to dump for wait failure for URL [%s]", w.url)
-					}
-				} else if err == nil && (w.dumpOnError || w.locationOnError) {
-					// just read off the channel, so it's not there later
-					select {
-					case <-w.errorDumps:
-					default:
-					}
+				if err != nil && w.dumpOnError {
+					Log().Errorf("Dumping content for URL [%s]:", w.url)
+					fmt.Printf("%s", res)
+				}
+				if err != nil && w.locationOnError {
+					Log().Errorf("Logging the current URL location as [%s] for our original target [%s]", currentURL, w.url)
 				}
 
 				return err
@@ -621,15 +625,11 @@ func PrintContent(cmd *cobra.Command) {
 	}
 
 	fetchDumps := make(chan dumpData)
-	errorDumps := make(chan dumpData)
 	actionGens := make([][]actionGenerator, 0)
 	actionGens = append(actionGens, make([]actionGenerator, 0))
 
 	actionGens[0] = append(actionGens[0], navigateActions{url: u})
-	if waitErrorDump || waitErrorLocation {
-		actionGens[0] = append(actionGens[0], dumpActions{postActionData: errorDumps, url: u})
-	}
-	actionGens[0] = append(actionGens[0], waitActions{url: u, waitSelector: w, dumpOnError: waitErrorDump, locationOnError: waitErrorLocation, errorDumps: errorDumps})
+	actionGens[0] = append(actionGens[0], waitActions{url: u, waitSelector: w, dumpOnError: waitErrorDump, locationOnError: waitErrorLocation})
 	actionGens[0] = append(actionGens[0], dumpActions{postActionData: fetchDumps, textSelector: t, hrefSelector: h, idSelector: id, url: u})
 
 	f := executors["fetch"].(*fetchExecutor)
@@ -698,12 +698,8 @@ func EmailContent(cmd *cobra.Command) {
 	}
 
 	for i, u := range urls {
-		errorDumps := make(chan dumpData)
 		actionGens[i] = append(actionGens[i], navigateActions{url: u})
-		if waitErrorDump || waitErrorLocation {
-			actionGens[i] = append(actionGens[i], dumpActions{postActionData: errorDumps, url: u})
-		}
-		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: waitErrorDump, locationOnError: waitErrorLocation, errorDumps: errorDumps})
+		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: waitErrorDump, locationOnError: waitErrorLocation})
 		e := emailActions{postActionData: emailMetaData, url: u}
 		if checkSelectors != nil && expectedTexts != nil {
 			e.checkSelector = checkSelectors[i]
