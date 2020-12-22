@@ -56,6 +56,9 @@ func init() {
 	rootCmd.PersistentFlags().IntP("timeout", "t", -1, "Timeout for context - if none is specified a default background context will be used")
 	rootCmd.PersistentFlags().Bool("wait_error_dump", false, "If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents")
 	rootCmd.PersistentFlags().Bool("wait_error_location", false, "If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at")
+
+	rootCmd.PersistentFlags().Bool("redis_dump", false, "Set this option for all dumps to go to the redis database that we connet to this app")
+	rootCmd.PersistentFlags().String("redis_url", "", "If we want to send dumps to a redis database we must set a valid URL")
 }
 
 // initConfig reads in config file and ENV variables if set.

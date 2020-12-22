@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"math/rand"
 	"net/smtp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/apsdehal/go-logger"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
+	"github.com/go-redis/redis"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -41,6 +43,8 @@ var (
 
 	gSelectedAgents = map[string]string{}
 	gWorkingAgents  = map[string]string{}
+
+	gWaitErrorDumps = make(chan dumpData)
 )
 
 type actionGenerator interface {
@@ -72,6 +76,7 @@ type waitActions struct {
 
 	locationOnError bool
 	dumpOnError     bool
+	dumpToRedis     bool
 }
 
 type dumpActions struct {
@@ -169,8 +174,15 @@ func (w waitActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 				}
 
 				if err != nil && w.dumpOnError {
-					Log().Errorf("Dumping content for URL [%s]:", w.url)
-					fmt.Printf("%s", res)
+					if w.dumpToRedis {
+						Log().Errorf("Dumping content for URL [%s] to redis", w.url)
+						go func() {
+							gWaitErrorDumps <- dumpData{URL: w.url, ExtractText: res}
+						}()
+					} else {
+						Log().Errorf("Dumping content for URL [%s] to stdout:", w.url)
+						fmt.Printf("%s", res)
+					}
 				}
 				if err != nil && w.locationOnError {
 					Log().Errorf("Logging the current URL location as [%s] for our original target [%s]", currentURL, w.url)
@@ -520,6 +532,27 @@ func run(actions chromedp.Tasks, targetURL string) error {
 	return err
 }
 
+func redisWorker(redisURL string) {
+	client := redis.NewClient(&redis.Options{
+		Addr: redisURL,
+	})
+	for {
+		select {
+		case d := <-gWaitErrorDumps:
+			timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+			key := timestamp + "-" + d.URL
+			status := client.Set(key, d.ExtractText, 0)
+			if status != nil && status.Err() == nil {
+				Log().Infof("For key [%s] redis write was successful", key)
+			} else if status != nil && status.Err() != nil {
+				Log().Errorf("For key [%s] error encountered: [%s]", key, status.Err())
+			} else if status == nil {
+				Log().Errorf("For key [%s] redis write status was nil", key)
+			}
+		}
+	}
+}
+
 // Log creates a logger that we can use in the app
 func Log() *logger.Logger {
 	if gLog == nil {
@@ -543,6 +576,10 @@ func CommonRootChecks(cmd *cobra.Command) error {
 		gAgents = DefaultUserAgents
 	}
 	Log().Infof("Running with [%d] user-agents: [%s]", len(gAgents), gAgents)
+
+	if viper.IsSet("redis_dumps") && !viper.IsSet("redis_url") {
+		Log().Panic("We require a valid redis_url to dump to redis, specify one")
+	}
 
 	return nil
 }
@@ -624,12 +661,19 @@ func PrintContent(cmd *cobra.Command) {
 		Log().Info("Will log the current URL location on wait errors")
 	}
 
+	redisDumpOn := viper.GetBool("redis_dumps")
+	if redisDumpOn {
+		redisURL := viper.GetString("redis_url")
+		Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
+		go redisWorker(redisURL)
+	}
+
 	fetchDumps := make(chan dumpData)
 	actionGens := make([][]actionGenerator, 0)
 	actionGens = append(actionGens, make([]actionGenerator, 0))
 
 	actionGens[0] = append(actionGens[0], navigateActions{url: u})
-	actionGens[0] = append(actionGens[0], waitActions{url: u, waitSelector: w, dumpOnError: waitErrorDump, locationOnError: waitErrorLocation})
+	actionGens[0] = append(actionGens[0], waitActions{url: u, waitSelector: w, dumpOnError: waitErrorDump, locationOnError: waitErrorLocation, dumpToRedis: redisDumpOn})
 	actionGens[0] = append(actionGens[0], dumpActions{postActionData: fetchDumps, textSelector: t, hrefSelector: h, idSelector: id, url: u})
 
 	f := executors["fetch"].(*fetchExecutor)
@@ -668,6 +712,13 @@ func EmailContent(cmd *cobra.Command) {
 	}
 	if waitErrorLocation {
 		Log().Info("Will log the current URL location on wait errors")
+	}
+
+	redisDumpOn := viper.GetBool("redis_dumps")
+	if redisDumpOn {
+		redisURL := viper.GetString("redis_url")
+		Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
+		go redisWorker(redisURL)
 	}
 
 	checkSelectors := viper.GetStringSlice("check_selectors")
