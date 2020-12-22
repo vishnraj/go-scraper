@@ -666,6 +666,7 @@ func PrintContent(cmd *cobra.Command) {
 		redisPassword := viper.GetString("redis_password")
 		redisKeyExpiration := viper.GetInt("redis_key_expiration")
 		Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
+		Log().Infof("Redis key expiration set to: [%d]", redisKeyExpiration)
 		go redisWorker(redisURL, redisPassword, redisKeyExpiration)
 	}
 
@@ -721,6 +722,7 @@ func EmailContent(cmd *cobra.Command) {
 		redisPassword := viper.GetString("redis_password")
 		redisKeyExpiration := viper.GetInt("redis_key_expiration")
 		Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
+		Log().Infof("Redis key expiration set to: [%d]", redisKeyExpiration)
 		go redisWorker(redisURL, redisPassword, redisKeyExpiration)
 	}
 
