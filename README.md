@@ -15,10 +15,14 @@ Usage:
 Available Commands:
   fetch       Write the HTML content for the URL to stdout
   help        Help about any command
+  watch       Watch URL(s) and take an action if criteria is met
 
 Flags:
   -a, --agent string           User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
+      --detect_access_denied   If access denied is encoutered, then we will take a counter action
+      --error_dump             Dumps current page contents on error
+      --error_location         Logs the current URL that we have arrived at on error
       --headless               Use headless shell
   -h, --help                   help for go-dynamic-fetch
   --redis_dump                 Set this option for all dumps to go to the redis database that we connet to this app
@@ -26,8 +30,6 @@ Flags:
   --redis_password string      If we need a password to login to the redis database, specify it
   --redis_url string           If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
-      --wait_error_dump        If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
-      --wait_error_location    If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
 
 Use "go-dynamic-fetch [command] --help" for more information about a command.
 ```
@@ -50,14 +52,15 @@ Flags:
 Global Flags:
   -a, --agent string           User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
+      --detect_access_denied   If access denied is encoutered, then we will take a counter action
+      --error_dump             Dumps current page contents on error
+      --error_location         Logs the current URL that we have arrived at on error
       --headless               Use headless shell
       --redis_dump             Set this option for all dumps to go to the redis database that we connet to this app
       --redis_key_expiration int   The duration, in secondds that keys will remain in redis for - default value of zero makes this indefinite
       --redis_password string  If we need a password to login to the redis database, specify it
       --redis_url string       If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
-      --wait_error_dump        If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
-      --wait_error_location    If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
 ```
 
 ## Watch
@@ -82,14 +85,15 @@ Flags:
 Global Flags:
   -a, --agent string             User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
       --config string            config file (default is $HOME/.go-dynamic-fetch.yaml)
+      --detect_access_denied     If access denied is encoutered, then we will take a counter action
+      --error_dump               Dumps current page contents on error
+      --error_location           Logs the current URL that we have arrived at on error
       --headless                 Use headless shell
       --redis_dump               Set this option for all dumps to go to the redis database that we connet to this app
       --redis_key_expiration int The duration, in secondds that keys will remain in redis for - default value of zero makes this indefinite
       --redis_password string    If we need a password to login to the redis database, specify it
       --redis_url string         If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int              Timeout for context - if none is specified a default background context will be used (default -1)
-      --wait_error_dump          If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
-      --wait_error_location      If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
 ```
 
 ## Email
@@ -112,6 +116,9 @@ Global Flags:
       --check_types strings          The types of selectors for each check selector in order, which correspond to the ones in check_selectors - specify none to not use one for URL at that index
       --config string                config file (default is $HOME/.go-dynamic-fetch.yaml)
       --expected_texts strings       Pieces of texts that represent the normal state of an item - when the status is updated, the the desired user action will be taken
+      --detect_access_denied         If access denied is encoutered, then we will take a counter action
+      --error_dump                   Dumps current page contents on error
+      --error_location               Logs the current URL that we have arrived at on error
       --headless                     Use headless shell
       --redis_dump                   Set this option for all dumps to go to the redis database that we connet to this app
       --redis_key_expiration int     The duration, in secondds that keys will remain in redis for - default value of zero makes this indefinite
@@ -120,9 +127,6 @@ Global Flags:
   -i, --interval int                 Interval (in seconds) to wait in between watching a selector (default 30)
   -t, --timeout int                  Timeout for context - if none is specified a default background context will be used (default -1)
       --urls strings                 All URLs to watch
-      --wait_error_dump              If an error is encountered during the wait phase, where the expected element is not loaded, dump the page contents to the log
-      --wait_error_location    If an error is encountered during the wait phase, where the expected element is not loaded, log the current URL we are at
-      --wait_selectors strings       All selectors, in order of URLs passed in, to wait for
 ```
 
 # Examples
