@@ -25,6 +25,8 @@ const (
 
 	// DefaultSubject to send email with
 	DefaultSubject = "Go-Dynamic-Fetch Watcher"
+
+	accessDeniedMessage = "Access Denied"
 )
 
 var (
@@ -44,7 +46,8 @@ var (
 	gSelectedAgents = map[string]string{}
 	gWorkingAgents  = map[string]string{}
 
-	gWaitErrorDumps = make(chan dumpData)
+	gWaitErrorDumps   = make(chan dumpData)
+	gDetectErrorDumps = make(chan dumpData)
 )
 
 type actionGenerator interface {
@@ -70,13 +73,24 @@ type navigateActions struct {
 	url string
 }
 
+type detectActions struct {
+	url                string
+	detectAccessDenied bool
+
+	locationOnError bool
+	dumpOnError     bool
+
+	dumpToRedis bool
+}
+
 type waitActions struct {
 	url          string
 	waitSelector string
 
 	locationOnError bool
 	dumpOnError     bool
-	dumpToRedis     bool
+
+	dumpToRedis bool
 }
 
 type dumpActions struct {
@@ -121,6 +135,17 @@ type emailWatchFunc struct {
 	toSubject      string
 }
 
+type pageSnaps struct {
+	targetURL        string
+	checkLocation    bool
+	dumpPageContents bool
+	sendDumps        bool
+	dumps            chan dumpData
+
+	currentURL string
+	pageDump   string
+}
+
 func (n navigateActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	actions = append(actions,
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -145,47 +170,56 @@ func (n navigateActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	return actions
 }
 
+func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
+	if d.detectAccessDenied {
+		actions = append(actions,
+			chromedp.ActionFunc(func(ctx context.Context) error {
+				s := pageSnaps{targetURL: d.url, checkLocation: d.locationOnError, dumpPageContents: d.dumpOnError, sendDumps: d.dumpToRedis, dumps: gDetectErrorDumps}
+
+				err := s.before(ctx)
+				if err != nil {
+					Log().Errorf("%v", err)
+					return err
+				}
+
+				var title string
+				err = chromedp.Title(&title).Do(ctx)
+				err = s.after(ctx, err)
+				if err != nil {
+					Log().Errorf("%v", err)
+					return err
+				}
+
+				if !strings.Contains(title, accessDeniedMessage) {
+					Log().Infof("Didn't find the [%s] message on the page for URL [%s], nothing to do here, proceeding to next step", accessDeniedMessage, d.url)
+					return nil
+				}
+
+				Log().Infof("Encountered [%s] message, will unset the current user-agent for this URL [%s], which is currently [%s] so we try a different one during the next request", accessDeniedMessage, d.url, gWorkingAgents[d.url])
+				gWorkingAgents[d.url] = ""
+
+				return err
+			}))
+	}
+
+	return actions
+}
+
 func (w waitActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	if len(w.waitSelector) != 0 {
 		actions = append(actions,
 			chromedp.ActionFunc(func(ctx context.Context) error {
-				var currentURL string
-				var res string
-				var err error
+				s := pageSnaps{targetURL: w.url, checkLocation: w.locationOnError, dumpPageContents: w.dumpOnError, sendDumps: w.dumpToRedis, dumps: gWaitErrorDumps}
 
-				if w.locationOnError {
-					err = chromedp.Location(&currentURL).Do(ctx)
-					if err != nil {
-						Log().Errorf("%v", err)
-						return err
-					}
-				}
-				if w.dumpOnError {
-					res, err = extractData(ctx, "", "dump")
-					if err != nil {
-						Log().Errorf("%v", err)
-						return err
-					}
-				}
-
-				err = chromedp.WaitVisible(w.waitSelector).Do(ctx)
+				err := s.before(ctx)
 				if err != nil {
 					Log().Errorf("%v", err)
 				}
 
-				if err != nil && w.dumpOnError {
-					if w.dumpToRedis {
-						Log().Errorf("Dumping content for URL [%s] to redis", w.url)
-						go func() {
-							gWaitErrorDumps <- dumpData{URL: w.url, ExtractText: res}
-						}()
-					} else {
-						Log().Errorf("Dumping content for URL [%s] to stdout:", w.url)
-						fmt.Printf("%s", res)
-					}
-				}
-				if err != nil && w.locationOnError {
-					Log().Errorf("Logging the current URL location as [%s] for our original target [%s]", currentURL, w.url)
+				err = chromedp.WaitVisible(w.waitSelector).Do(ctx)
+				err = s.after(ctx, err)
+				if err != nil {
+					Log().Errorf("%v", err)
 				}
 
 				return err
@@ -454,6 +488,42 @@ func extractData(ctx context.Context, selector string, selectorType string) (str
 	return res, nil
 }
 
+func (s *pageSnaps) before(ctx context.Context) error {
+	if s.checkLocation {
+		err := chromedp.Location(&s.currentURL).Do(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	if s.dumpPageContents {
+		res, err := extractData(ctx, "", "dump")
+		if err != nil {
+			return err
+		}
+		s.pageDump = res
+	}
+
+	return nil
+}
+
+func (s *pageSnaps) after(ctx context.Context, err error) error {
+	if err != nil && s.dumpPageContents {
+		if s.sendDumps {
+			Log().Errorf("Dumping content for URL [%s] to redis", s.targetURL)
+			go func() {
+				s.dumps <- dumpData{URL: s.targetURL, ExtractText: s.pageDump}
+			}()
+		} else {
+			Log().Errorf("Dumping content for URL [%s] to stdout:", s.targetURL)
+			fmt.Printf("%s", s.pageDump)
+		}
+	}
+	if err != nil && s.checkLocation {
+		Log().Errorf("Logging the current URL location as [%s] for our original target [%s]", s.currentURL, s.targetURL)
+	}
+	return err
+}
+
 func getAgent(agents []string) string {
 	rand.Seed(time.Now().UTC().UnixNano())
 	rand.Shuffle(len(agents), func(i, j int) {
@@ -533,6 +603,9 @@ func run(actions chromedp.Tasks, targetURL string) error {
 }
 
 func redisWorker(redisURL string, redisPassword string, redisKeyExpiration int) {
+	Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
+	Log().Infof("Redis key expiration set to [%d] seconds", redisKeyExpiration)
+
 	client := redis.NewClient(&redis.Options{
 		Addr:     redisURL,
 		Password: redisPassword,
@@ -540,13 +613,28 @@ func redisWorker(redisURL string, redisPassword string, redisKeyExpiration int) 
 	for {
 		select {
 		case d := <-gWaitErrorDumps:
-			timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-			key := "wait-errors-" + timestamp + "-" + d.URL
-			err := client.Set(client.Context(), key, d.ExtractText, time.Duration(redisKeyExpiration)*time.Second).Err()
-			if err == nil {
-				Log().Infof("For key [%s] redis write was successful", key)
-			} else {
-				Log().Errorf("For key [%s] error encountered during write: [%v]", key, err)
+			{
+				timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+				key := "wait-errors-" + timestamp + "-" + d.URL
+				err := client.Set(client.Context(), key, d.ExtractText, time.Duration(redisKeyExpiration)*time.Second).Err()
+				if err == nil {
+					Log().Infof("For key [%s] redis write was successful", key)
+				} else {
+					Log().Errorf("For key [%s] error encountered during write: [%v]", key, err)
+				}
+				break
+			}
+		case d := <-gDetectErrorDumps:
+			{
+				timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+				key := "detect-errors-" + timestamp + "-" + d.URL
+				err := client.Set(client.Context(), key, d.ExtractText, time.Duration(redisKeyExpiration)*time.Second).Err()
+				if err == nil {
+					Log().Infof("For key [%s] redis write was successful", key)
+				} else {
+					Log().Errorf("For key [%s] error encountered during write: [%v]", key, err)
+				}
+				break
 			}
 		}
 	}
@@ -632,9 +720,6 @@ func PrintContent(cmd *cobra.Command) {
 	u := viper.GetString("url")
 	w := viper.GetString("wait_selector")
 
-	waitErrorDump := viper.GetBool("wait_error_dump")
-	waitErrorLocation := viper.GetBool("wait_error_location")
-
 	Log().Infof("Fetching content from: [%s]", u)
 	if len(w) != 0 {
 		Log().Infof("Waiting on selector: [%s]", w)
@@ -653,10 +738,17 @@ func PrintContent(cmd *cobra.Command) {
 		Log().Infof("Will dump data for id selector: [%s]", id)
 	}
 
-	if waitErrorDump {
+	detectAccessDeniedOn := viper.GetBool("detect_access_denied")
+	if detectAccessDeniedOn {
+		Log().Info("Taking action against access denied")
+	}
+
+	errorDump := viper.GetBool("error_dump")
+	errorLocation := viper.GetBool("error_location")
+	if errorDump {
 		Log().Info("Will dump out HTML page content on wait errors")
 	}
-	if waitErrorLocation {
+	if errorLocation {
 		Log().Info("Will log the current URL location on wait errors")
 	}
 
@@ -665,8 +757,6 @@ func PrintContent(cmd *cobra.Command) {
 		redisURL := viper.GetString("redis_url")
 		redisPassword := viper.GetString("redis_password")
 		redisKeyExpiration := viper.GetInt("redis_key_expiration")
-		Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
-		Log().Infof("Redis key expiration set to: [%d]", redisKeyExpiration)
 		go redisWorker(redisURL, redisPassword, redisKeyExpiration)
 	}
 
@@ -675,7 +765,8 @@ func PrintContent(cmd *cobra.Command) {
 	actionGens = append(actionGens, make([]actionGenerator, 0))
 
 	actionGens[0] = append(actionGens[0], navigateActions{url: u})
-	actionGens[0] = append(actionGens[0], waitActions{url: u, waitSelector: w, dumpOnError: waitErrorDump, locationOnError: waitErrorLocation, dumpToRedis: redisDumpOn})
+	actionGens[0] = append(actionGens[0], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
+	actionGens[0] = append(actionGens[0], waitActions{url: u, waitSelector: w, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
 	actionGens[0] = append(actionGens[0], dumpActions{postActionData: fetchDumps, textSelector: t, hrefSelector: h, idSelector: id, url: u})
 
 	f := executors["fetch"].(*fetchExecutor)
@@ -697,9 +788,6 @@ func EmailContent(cmd *cobra.Command) {
 
 	urls := viper.GetStringSlice("urls")
 	waitSelectors := viper.GetStringSlice("wait_selectors")
-	waitErrorDump := viper.GetBool("wait_error_dump")
-	waitErrorLocation := viper.GetBool("wait_error_location")
-
 	password := viper.GetString("email_password")
 
 	Log().Infof("Using email subject: [%s]", subject)
@@ -709,10 +797,18 @@ func EmailContent(cmd *cobra.Command) {
 	Log().Infof("Watching URLs: [%v]", urls)
 	Log().Infof("Waiting on selectors: [%v]", waitSelectors)
 
-	if waitErrorDump {
+	detectAccessDeniedOn := viper.GetBool("detect_access_denied")
+	if detectAccessDeniedOn {
+		Log().Info("Taking action against access denied")
+	}
+
+	errorDump := viper.GetBool("error_dump")
+	errorLocation := viper.GetBool("error_location")
+
+	if errorDump {
 		Log().Info("Will dump out HTML page content on wait errors")
 	}
-	if waitErrorLocation {
+	if errorLocation {
 		Log().Info("Will log the current URL location on wait errors")
 	}
 
@@ -721,8 +817,6 @@ func EmailContent(cmd *cobra.Command) {
 		redisURL := viper.GetString("redis_url")
 		redisPassword := viper.GetString("redis_password")
 		redisKeyExpiration := viper.GetInt("redis_key_expiration")
-		Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
-		Log().Infof("Redis key expiration set to: [%d]", redisKeyExpiration)
 		go redisWorker(redisURL, redisPassword, redisKeyExpiration)
 	}
 
@@ -755,7 +849,8 @@ func EmailContent(cmd *cobra.Command) {
 
 	for i, u := range urls {
 		actionGens[i] = append(actionGens[i], navigateActions{url: u})
-		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: waitErrorDump, locationOnError: waitErrorLocation, dumpToRedis: redisDumpOn})
+		actionGens[0] = append(actionGens[0], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
+		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
 		e := emailActions{postActionData: emailMetaData, url: u}
 		if checkSelectors != nil && expectedTexts != nil {
 			e.checkSelector = checkSelectors[i]
