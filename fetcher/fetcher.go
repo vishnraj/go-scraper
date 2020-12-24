@@ -849,7 +849,7 @@ func EmailContent(cmd *cobra.Command) {
 
 	for i, u := range urls {
 		actionGens[i] = append(actionGens[i], navigateActions{url: u})
-		actionGens[0] = append(actionGens[0], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
+		actionGens[i] = append(actionGens[i], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
 		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
 		e := emailActions{postActionData: emailMetaData, url: u}
 		if checkSelectors != nil && expectedTexts != nil {
