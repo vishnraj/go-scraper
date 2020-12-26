@@ -19,6 +19,11 @@ Available Commands:
 
 Flags:
   -a, --agent string           User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
+      --captcha_challenge_wait_selector string   The wait selector for the captcha challenge (default "div.rc-imageselect-payload")
+      --captcha_click_selector string            The selector element to click for the captcha box (default "div.g-recaptcha")
+      --captcha_iframe_uri string                The iframe URI to search for in order to load captcha challenge context (default "recaptcha/api2/bframe")
+      --captcha_iframe_wait_selector string      The selector element to wait for the captcha iframe (default "/html/body/div[6]/div[4]/iframe")
+      --captcha_wait_selector string             The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
       --detect_access_denied   If access denied is encoutered, then we will take a counter action
       --error_dump             Dumps current page contents on error
@@ -51,6 +56,11 @@ Flags:
 
 Global Flags:
   -a, --agent string           User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
+      --captcha_challenge_wait_selector string   The wait selector for the captcha challenge (default "div.rc-imageselect-payload")
+      --captcha_click_selector string            The selector element to click for the captcha box (default "div.g-recaptcha")
+      --captcha_iframe_uri string                The iframe URI to search for in order to load captcha challenge context (default "recaptcha/api2/bframe")
+      --captcha_iframe_wait_selector string      The selector element to wait for the captcha iframe (default "/html/body/div[6]/div[4]/iframe")
+      --captcha_wait_selector string             The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
       --detect_access_denied   If access denied is encoutered, then we will take a counter action
       --error_dump             Dumps current page contents on error
@@ -74,6 +84,8 @@ Available Commands:
   email       Emails if the desired criteria is met in watch
 
 Flags:
+      --captcha_click_selectors strings   Override the default captcha click selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
+      --captcha_wait_selectors strings    Override the default captcha wait selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
       --check_selectors strings   Selectors that are used to check for the given expected-texts
       --check_types strings       The types of selectors for each check selector in order, which correspond to the ones in check_selectors - specify none to not use one for URL at that index
       --expected_texts strings    Pieces of texts that represent the normal state of an item - when the status is updated, the the desired user action will be taken
@@ -84,6 +96,11 @@ Flags:
 
 Global Flags:
   -a, --agent string             User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
+      --captcha_challenge_wait_selector string   The wait selector for the captcha challenge (default "div.rc-imageselect-payload")
+      --captcha_click_selector string            The selector element to click for the captcha box (default "div.g-recaptcha")
+      --captcha_iframe_uri string                The iframe URI to search for in order to load captcha challenge context (default "recaptcha/api2/bframe")
+      --captcha_iframe_wait_selector string      The selector element to wait for the captcha iframe (default "/html/body/div[6]/div[4]/iframe")
+      --captcha_wait_selector string             The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --config string            config file (default is $HOME/.go-dynamic-fetch.yaml)
       --detect_access_denied     If access denied is encoutered, then we will take a counter action
       --error_dump               Dumps current page contents on error
@@ -112,6 +129,13 @@ Flags:
 
 Global Flags:
   -a, --agent string                 User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
+      --captcha_challenge_wait_selector string   The wait selector for the captcha challenge (default "div.rc-imageselect-payload")
+      --captcha_click_selector string     The selector element to click for the captcha box (default "div.g-recaptcha")
+      --captcha_click_selectors strings   Override the default captcha click selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
+      --captcha_iframe_uri string         The iframe URI to search for in order to load captcha challenge context (default "recaptcha/api2/bframe")
+      --captcha_iframe_wait_selector string  The selector element to wait for the captcha iframe (default "/html/body/div[6]/div[4]/iframe")
+      --captcha_wait_selector string      The selector element to wait for so we can load the captcha box (default "div.re-captcha")
+      --captcha_wait_selectors strings    Override the default captcha wait selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
       --check_selectors strings      Selectors that are used to check for the given expected_texts
       --check_types strings          The types of selectors for each check selector in order, which correspond to the ones in check_selectors - specify none to not use one for URL at that index
       --config string                config file (default is $HOME/.go-dynamic-fetch.yaml)
