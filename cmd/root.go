@@ -59,6 +59,12 @@ func init() {
 	rootCmd.PersistentFlags().Bool("error_location", false, "Logs the current URL that we have arrived at on error")
 
 	rootCmd.PersistentFlags().Bool("detect_access_denied", false, "If access denied is encoutered, then we will take a counter action")
+	rootCmd.PersistentFlags().Bool("detect_captcha_box", false, "If a captcha box is encoutered, then we will take a counter action")
+	rootCmd.PersistentFlags().String("captcha_wait_selector", fetcher.DefaultCaptchaWaitSelector, "The selector element to wait for so we can load the captcha box")
+	rootCmd.PersistentFlags().String("captcha_click_selector", fetcher.DefaultCaptchaClickSelector, "The selector element to click for the captcha box")
+	rootCmd.PersistentFlags().String("captcha_iframe_wait_selector", fetcher.DefaultCaptchaIframeWaitSelector, "The selector element to wait for the captcha iframe")
+	rootCmd.PersistentFlags().String("captcha_iframe_uri", fetcher.DefaultCaptchaIframeURI, "The iframe URI to search for in order to load captcha challenge context")
+	rootCmd.PersistentFlags().String("captcha_challenge_wait_selector", fetcher.DefaultCaptchaChallengeWaitSelector, "The wait selector for the captcha challenge")
 
 	rootCmd.PersistentFlags().Bool("redis_dump", false, "Set this option for all dumps to go to the redis database that we connet to this app")
 	rootCmd.PersistentFlags().String("redis_url", "", "If we want to send dumps to a redis database we must set a valid URL")
