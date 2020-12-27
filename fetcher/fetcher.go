@@ -15,6 +15,7 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/target"
 	"github.com/chromedp/chromedp"
+	"github.com/chromedp/chromedp/kb"
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -258,12 +259,14 @@ func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 				}
 
 				Log().Infof("Wait complete, captcha box loaded, clicking captcha box for URL [%s] using selector [%s]", d.url, d.captchaClickSelector)
-				err = chromedp.Click(d.captchaClickSelector).Do(ctx)
+
+				err = chromedp.SendKeys(d.captchaClickSelector, kb.Enter).Do(ctx)
 				err = s.after(ctx, err)
 				if err != nil {
 					Log().Errorf("%v", err)
 					return err
 				}
+
 				Log().Infof("Successfully clicked captcha box for URL [%s] using selector [%s]", d.url, d.captchaClickSelector)
 
 				Log().Infof("Check if the block URL [%s] for target URL [%s] has been updated back to target and if not, we will dump captcha contents", s.currentURL, d.url)
@@ -282,6 +285,7 @@ func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 						return err
 					}
 					Log().Infof("Captcha for URL [%s] loaded", d.url)
+
 					c := pageSnaps{targetURL: d.url, checkLocation: false, dumpCaptcha: true, sendDumps: d.dumpToRedis, dumps: gCaptchaDumps, captchaIframeURI: d.captchaIframeURI, captchaChallengeWaitSelector: d.captchaChallengeWaitSelector}
 					err = c.before(ctx)
 					if err != nil {
@@ -532,8 +536,11 @@ func (e emailWatchFunc) sendEmail(data emailData) {
 	Log().Infof("Emailed %s successfully\n", e.toEmail)
 }
 
-func getIframeContext(ctx context.Context, uriPart string) context.Context {
-	targets, _ := chromedp.Targets(ctx)
+func getIframeContext(ctx context.Context, uriPart string) (context.Context, error) {
+	targets, err := chromedp.Targets(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var tgt *target.Info
 	for _, t := range targets {
 		if t.Type == "iframe" && strings.Contains(t.URL, uriPart) {
@@ -544,9 +551,9 @@ func getIframeContext(ctx context.Context, uriPart string) context.Context {
 	}
 	if tgt != nil {
 		ictx, _ := chromedp.NewContext(ctx, chromedp.WithTargetID(tgt.TargetID))
-		return ictx
+		return ictx, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func extractData(ctx context.Context, selector string, selectorType string) (string, error) {
@@ -624,13 +631,17 @@ func (s *pageSnaps) before(ctx context.Context) error {
 	}
 	if s.dumpCaptcha {
 		Log().Infof("Finding iframe for captcha using URI [%s] for URL [%s]", s.captchaIframeURI, s.targetURL)
-		ictx := getIframeContext(ctx, s.captchaIframeURI)
+		ictx, err := getIframeContext(ctx, s.captchaIframeURI)
+		if err != nil {
+			Log().Errorf("%v", err)
+			return err
+		}
 		if ictx == nil {
 			err := fmt.Errorf("For URL [%s] we couldn't load the iframe for the captcha", s.targetURL)
 			return err
 		}
 		Log().Infof("Found captcha iframe for URL [%s], will look for captcha details and wait on [%s]", s.targetURL, s.captchaChallengeWaitSelector)
-		err := chromedp.Run(
+		err = chromedp.Run(
 			ictx,
 			chromedp.WaitVisible(s.captchaChallengeWaitSelector),
 			chromedp.ActionFunc(func(ctxLocal context.Context) error {
@@ -700,6 +711,8 @@ func setOpt(targetURL string) ([]func(*chromedp.ExecAllocator), error) {
 		opts = []chromedp.ExecAllocatorOption{
 			chromedp.UserAgent(agent),
 			chromedp.Flag("headless", true),
+			chromedp.Flag("hide-scrollbars", true),
+			chromedp.Flag("mute-audio", true),
 			chromedp.Flag("disable-gpu", true),
 			chromedp.Flag("no-sandbox", true),
 			chromedp.Flag("allow-insecure-localhost", true),
