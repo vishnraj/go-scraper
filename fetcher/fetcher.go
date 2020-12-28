@@ -13,7 +13,6 @@ import (
 
 	"github.com/apsdehal/go-logger"
 	"github.com/chromedp/cdproto/cdp"
-	"github.com/chromedp/cdproto/target"
 	"github.com/chromedp/chromedp"
 	"github.com/chromedp/chromedp/kb"
 	"github.com/go-redis/redis/v8"
@@ -22,6 +21,9 @@ import (
 )
 
 const (
+	// DefaultUserDataDir default user data dir for non-headless mode
+	DefaultUserDataDir = "/tmp/chrome_dev_1"
+
 	// DefaultInterval to wait (in seconds) when watching a selector
 	DefaultInterval = 30
 
@@ -35,13 +37,10 @@ const (
 	DefaultCaptchaClickSelector = `div.g-recaptcha`
 
 	// DefaultCaptchaIframeWaitSelector default wait selector for captcha iframe
-	DefaultCaptchaIframeWaitSelector = `/html/body/div[6]/div[4]/iframe`
+	DefaultCaptchaIframeWaitSelector = `body > div:nth-child(6) > div:nth-child(4) > iframe`
 
-	// DefaultCaptchaIframeURI default URI for search for captcha images iframe
-	DefaultCaptchaIframeURI = `recaptcha/api2/bframe`
-
-	// DefaultCaptchaChallengeWaitSelector default wait selector for captcha images
-	DefaultCaptchaChallengeWaitSelector = `div.rc-imageselect-payload`
+	// DefaultCaptchaClickSleep default time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe
+	DefaultCaptchaClickSleep = 5
 
 	accessDeniedMessage = "Access Denied"
 )
@@ -99,10 +98,7 @@ type detectActions struct {
 	captchaWaitSelector       string // used for captcha checkbox
 	captchaClickSelector      string // used to click captcha checkbox
 	captchaIframeWaitSelector string // only if we get captcha challenge, to load it
-
-	// these are used for snaps
-	captchaIframeURI             string
-	captchaChallengeWaitSelector string
+	captchaClickSleep         int
 
 	locationOnError bool
 	dumpOnError     bool
@@ -167,9 +163,9 @@ type pageSnaps struct {
 	checkLocation    bool
 	dumpPageContents bool
 
-	dumpCaptcha                  bool
-	captchaIframeURI             string
-	captchaChallengeWaitSelector string
+	dumpCaptcha               bool
+	captchaIframeWaitSelector string
+	captchaClickSleep         int
 
 	sendDumps bool
 	dumps     chan dumpData
@@ -286,7 +282,7 @@ func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 					}
 					Log().Infof("Captcha for URL [%s] loaded", d.url)
 
-					c := pageSnaps{targetURL: d.url, checkLocation: false, dumpCaptcha: true, sendDumps: d.dumpToRedis, dumps: gCaptchaDumps, captchaIframeURI: d.captchaIframeURI, captchaChallengeWaitSelector: d.captchaChallengeWaitSelector}
+					c := pageSnaps{targetURL: d.url, checkLocation: false, dumpCaptcha: true, sendDumps: d.dumpToRedis, dumps: gCaptchaDumps, captchaIframeWaitSelector: d.captchaIframeWaitSelector}
 					err = c.before(ctx)
 					if err != nil {
 						err = s.after(ctx, err)
@@ -536,26 +532,6 @@ func (e emailWatchFunc) sendEmail(data emailData) {
 	Log().Infof("Emailed %s successfully\n", e.toEmail)
 }
 
-func getIframeContext(ctx context.Context, uriPart string) (context.Context, error) {
-	targets, err := chromedp.Targets(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var tgt *target.Info
-	for _, t := range targets {
-		if t.Type == "iframe" && strings.Contains(t.URL, uriPart) {
-			Log().Infof("%s|%s|%s|%s", t.Title, t.Type, t.URL, t.TargetID)
-			tgt = t
-			break
-		}
-	}
-	if tgt != nil {
-		ictx, _ := chromedp.NewContext(ctx, chromedp.WithTargetID(tgt.TargetID))
-		return ictx, nil
-	}
-	return nil, nil
-}
-
 func extractData(ctx context.Context, selector string, selectorType string) (string, error) {
 	var res string
 	switch selectorType {
@@ -630,27 +606,15 @@ func (s *pageSnaps) before(ctx context.Context) error {
 		s.pageDump = res
 	}
 	if s.dumpCaptcha {
-		Log().Infof("Finding iframe for captcha using URI [%s] for URL [%s]", s.captchaIframeURI, s.targetURL)
-		ictx, err := getIframeContext(ctx, s.captchaIframeURI)
+		Log().Infof("Finding iframe for captcha using URI [%s] for URL [%s]", s.captchaIframeWaitSelector, s.targetURL)
+
+		clickSleep := 5
+		Log().Infof("Sleeping for [%d] seconds after sleep to allow captcha challenge to load", clickSleep)
+		chromedp.Sleep(time.Duration(clickSleep) * time.Second).Do(ctx)
+
+		err := chromedp.EvaluateAsDevTools(`document.querySelector('`+s.captchaIframeWaitSelector+`').contentWindow.document.body.outerHTML;`, &s.pageDump).Do(ctx)
 		if err != nil {
 			Log().Errorf("%v", err)
-			return err
-		}
-		if ictx == nil {
-			err := fmt.Errorf("For URL [%s] we couldn't load the iframe for the captcha", s.targetURL)
-			return err
-		}
-		Log().Infof("Found captcha iframe for URL [%s], will look for captcha details and wait on [%s]", s.targetURL, s.captchaChallengeWaitSelector)
-		err = chromedp.Run(
-			ictx,
-			chromedp.WaitVisible(s.captchaChallengeWaitSelector),
-			chromedp.ActionFunc(func(ctxLocal context.Context) error {
-				var err error
-				s.pageDump, err = extractData(ctxLocal, "", "dump")
-				return err
-			}),
-		)
-		if err != nil {
 			return err
 		}
 		Log().Infof("Successfully loaded captcha for URL [%s]", s.targetURL)
@@ -700,11 +664,16 @@ func setOpt(targetURL string) ([]func(*chromedp.ExecAllocator), error) {
 	runHeadless := viper.GetBool("headless")
 	var opts []func(*chromedp.ExecAllocator)
 	if !runHeadless {
-		Log().Info("Running without headless enabled")
+		userDataDir := viper.GetString("user_data_dir")
+		Log().Infof("Running without headless enabled, using user_data_dir [%s]", userDataDir)
 		opts = []chromedp.ExecAllocatorOption{
 			chromedp.UserAgent(agent),
 			chromedp.NoFirstRun,
 			chromedp.NoDefaultBrowserCheck,
+			chromedp.Flag("user-data-dir", userDataDir),
+			chromedp.Flag("disable-site-isolation-trials", true),
+			chromedp.Flag("disable-web-security", true),
+			chromedp.Flag("test-type", true),
 		}
 	} else {
 		Log().Info("Running in headless mode")
@@ -717,6 +686,7 @@ func setOpt(targetURL string) ([]func(*chromedp.ExecAllocator), error) {
 			chromedp.Flag("no-sandbox", true),
 			chromedp.Flag("allow-insecure-localhost", true),
 			chromedp.Flag("ignore-certificate-errors", true),
+			chromedp.Flag("disable-web-security", true),
 		}
 	}
 
@@ -824,6 +794,10 @@ func Log() *logger.Logger {
 func CommonRootChecks(cmd *cobra.Command) error {
 	viper.BindPFlags(cmd.Flags())
 
+	if !viper.GetBool("headless") && len(viper.GetString("user_data_dir")) == 0 {
+		return fmt.Errorf("If we are not running in headless mode, we need to specify a non-empty user_data_dir")
+	}
+
 	gAgents = viper.GetStringSlice("agents")
 	if len(gAgents) == 0 {
 		Log().Info("No user agents specified, setting to default")
@@ -832,11 +806,12 @@ func CommonRootChecks(cmd *cobra.Command) error {
 	Log().Infof("Running with [%d] user-agents: [%s]", len(gAgents), gAgents)
 
 	if viper.GetBool("redis_dumps") && !viper.IsSet("redis_url") {
-		Log().Panic("We require a valid redis_url to dump to redis, specify one")
+		return fmt.Errorf("We require a valid redis_url to dump to redis, specify one")
 	}
 
-	if viper.GetBool("detect_captcha_box") && (len(viper.GetString("captcha_wait_selector")) == 0 || len(viper.GetString("captcha_click_selector")) == 0 || len(viper.GetString("captcha_iframe_wait_selector")) == 0 || len(viper.GetString("captcha_iframe_uri")) == 0 || len(viper.GetString("captcha_challenge_wait_selector")) == 0 || !viper.GetBool("error_location")) {
-		Log().Panic("If we want to detect a captcha box, we must detect error_location as well to compare the current location to target location to be sure a captcha may exist and we must specify a non-empty captcha_wait_selector, captcha_click_selector, captcha_iframe_wait_selector, captcha_iframe_uri and captcha_challenge_wait_selector or leave defaults - pass accepted values for those flags to run with this flag")
+	if viper.GetBool("detect_captcha_box") && (len(viper.GetString("captcha_wait_selector")) == 0 || len(viper.GetString("captcha_click_selector")) == 0 || len(viper.GetString("captcha_iframe_wait_selector")) == 0 ||
+		!viper.GetBool("error_location")) {
+		return fmt.Errorf("If we want to detect a captcha box, we must detect error_location as well to compare the current location to target location to be sure a captcha may exist and we must specify a non-empty captcha_wait_selector, captcha_click_selector, captcha_iframe_wait_selector, captcha_iframe_uri and captcha_challenge_wait_selector or leave defaults - pass accepted values for those flags to run with this flag")
 	}
 
 	return nil
@@ -936,10 +911,9 @@ func PrintContent(cmd *cobra.Command) {
 	captchaWaitSelector := viper.GetString("captcha_wait_selector")
 	captchaClickSelector := viper.GetString("captcha_click_selector")
 	captchaIframeWaitSelector := viper.GetString("captcha_iframe_wait_selector")
-	captchaIframeURI := viper.GetString("captcha_iframe_uri")
-	captchaChallengeWaitSelector := viper.GetString("captcha_challenge_wait_selector")
+	captchaClickSleep := viper.GetInt("captcha_click_sleep")
 	if detectCaptchaBoxOn {
-		Log().Infof("Taking action against captcha boxes using default wait selector [%s], box selector [%s], iframe wait selector [%s], iframe URI [%s] and challenge wait selector [%s]", captchaWaitSelector, captchaClickSelector, captchaIframeWaitSelector, captchaIframeURI, captchaChallengeWaitSelector)
+		Log().Infof("Taking action against captcha boxes using default wait selector [%s], box selector [%s], iframe wait selector [%s] and captcha click seconds [%d]", captchaWaitSelector, captchaClickSelector, captchaIframeWaitSelector, captchaClickSleep)
 	}
 
 	errorDump := viper.GetBool("error_dump")
@@ -964,7 +938,7 @@ func PrintContent(cmd *cobra.Command) {
 	actionGens = append(actionGens, make([]actionGenerator, 0))
 
 	actionGens[0] = append(actionGens[0], navigateActions{url: u})
-	actionGens[0] = append(actionGens[0], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, detectCaptchaBox: detectCaptchaBoxOn, captchaWaitSelector: captchaWaitSelector, captchaClickSelector: captchaClickSelector, captchaIframeWaitSelector: captchaIframeWaitSelector, captchaIframeURI: captchaIframeURI, captchaChallengeWaitSelector: captchaChallengeWaitSelector, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
+	actionGens[0] = append(actionGens[0], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, detectCaptchaBox: detectCaptchaBoxOn, captchaWaitSelector: captchaWaitSelector, captchaClickSelector: captchaClickSelector, captchaIframeWaitSelector: captchaIframeWaitSelector, captchaClickSleep: captchaClickSleep, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
 	actionGens[0] = append(actionGens[0], waitActions{url: u, waitSelector: w, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
 	actionGens[0] = append(actionGens[0], dumpActions{postActionData: fetchDumps, textSelector: t, hrefSelector: h, idSelector: id, url: u})
 
@@ -1007,10 +981,9 @@ func EmailContent(cmd *cobra.Command) {
 	captchaOverrideWaitSelectors := viper.GetStringSlice("captcha_wait_selectors")
 	captchaOverrideClickSelectors := viper.GetStringSlice("captcha_click_selectors")
 	captchaIframeWaitSelector := viper.GetString("captcha_iframe_wait_selector")
-	captchaIframeURI := viper.GetString("captcha_iframe_uri")
-	captchaChallengeWaitSelector := viper.GetString("captcha_challenge_wait_selector")
+	captchaClickSleep := viper.GetInt("captcha_click_sleep")
 	if detectCaptchaBoxOn {
-		Log().Infof("Taking action against captcha boxes using default wait selector [%s], box selector [%s], iframe wait selector [%s], iframe URI [%s] and challenge wait selector [%s]", captchaWaitSelector, captchaClickSelector, captchaIframeWaitSelector, captchaIframeURI, captchaChallengeWaitSelector)
+		Log().Infof("Taking action against captcha boxes using default wait selector [%s], box selector [%s], iframe wait selector [%s] and captcha click seconds [%d]", captchaWaitSelector, captchaClickSelector, captchaIframeWaitSelector, captchaClickSleep)
 		Log().Infof("Override captcha wait selectors: [%v]", captchaOverrideWaitSelectors)
 		Log().Infof("Override captcha click selectors: [%v]", captchaOverrideClickSelectors)
 	}
@@ -1075,7 +1048,7 @@ func EmailContent(cmd *cobra.Command) {
 		}
 
 		actionGens[i] = append(actionGens[i], navigateActions{url: u})
-		actionGens[i] = append(actionGens[i], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, detectCaptchaBox: detectCaptchaBoxOn, captchaWaitSelector: capWaitSelector, captchaClickSelector: capClickSelector, captchaIframeWaitSelector: captchaIframeWaitSelector, captchaIframeURI: captchaIframeURI, captchaChallengeWaitSelector: captchaChallengeWaitSelector, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
+		actionGens[i] = append(actionGens[i], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, detectCaptchaBox: detectCaptchaBoxOn, captchaWaitSelector: capWaitSelector, captchaClickSelector: capClickSelector, captchaIframeWaitSelector: captchaIframeWaitSelector, captchaClickSleep: captchaClickSleep, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
 		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
 		e := emailActions{postActionData: emailMetaData, url: u}
 		if checkSelectors != nil && expectedTexts != nil {

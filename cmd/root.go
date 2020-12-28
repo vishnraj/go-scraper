@@ -52,6 +52,7 @@ func init() {
 	// specify all configurable values as options instead
 	// additional flags will be specified in sub-commands
 	rootCmd.PersistentFlags().Bool("headless", false, "Use headless shell")
+	rootCmd.PersistentFlags().String("user_data_dir", fetcher.DefaultUserDataDir, "User data dir for browser data if we specify non headless mode")
 	rootCmd.PersistentFlags().StringSliceP("agents", "a", fetcher.DefaultUserAgents, "User agent(s) to request as - if not specified the default is used")
 	rootCmd.PersistentFlags().IntP("timeout", "t", -1, "Timeout for context - if none is specified a default background context will be used")
 
@@ -63,8 +64,7 @@ func init() {
 	rootCmd.PersistentFlags().String("captcha_wait_selector", fetcher.DefaultCaptchaWaitSelector, "The selector element to wait for so we can load the captcha box")
 	rootCmd.PersistentFlags().String("captcha_click_selector", fetcher.DefaultCaptchaClickSelector, "The selector element to click for the captcha box")
 	rootCmd.PersistentFlags().String("captcha_iframe_wait_selector", fetcher.DefaultCaptchaIframeWaitSelector, "The selector element to wait for the captcha iframe")
-	rootCmd.PersistentFlags().String("captcha_iframe_uri", fetcher.DefaultCaptchaIframeURI, "The iframe URI to search for in order to load captcha challenge context")
-	rootCmd.PersistentFlags().String("captcha_challenge_wait_selector", fetcher.DefaultCaptchaChallengeWaitSelector, "The wait selector for the captcha challenge")
+	rootCmd.PersistentFlags().Int("captcha_click_sleep", fetcher.DefaultCaptchaClickSleep, "time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe")
 
 	rootCmd.PersistentFlags().Bool("redis_dump", false, "Set this option for all dumps to go to the redis database that we connet to this app")
 	rootCmd.PersistentFlags().String("redis_url", "", "If we want to send dumps to a redis database we must set a valid URL")

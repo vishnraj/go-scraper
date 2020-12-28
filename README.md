@@ -19,10 +19,9 @@ Available Commands:
 
 Flags:
   -a, --agent string           User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
-      --captcha_challenge_wait_selector string   The wait selector for the captcha challenge (default "div.rc-imageselect-payload")
       --captcha_click_selector string            The selector element to click for the captcha box (default "div.g-recaptcha")
-      --captcha_iframe_uri string                The iframe URI to search for in order to load captcha challenge context (default "recaptcha/api2/bframe")
-      --captcha_iframe_wait_selector string      The selector element to wait for the captcha iframe (default "/html/body/div[6]/div[4]/iframe")
+      --captcha_click_sleep int               time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
+      --captcha_iframe_wait_selector string   The selector element to wait for the captcha iframe (default "body > div:nth-child(6) > div:nth-child(4) > iframe")
       --captcha_wait_selector string             The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
       --detect_access_denied   If access denied is encoutered, then we will take a counter action
@@ -35,6 +34,7 @@ Flags:
   --redis_password string      If we need a password to login to the redis database, specify it
   --redis_url string           If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
+  --user_data_dir string         User data dir for browser data if we specify non headless mode (default "/tmp/chrome_dev_1")
 
 Use "go-dynamic-fetch [command] --help" for more information about a command.
 ```
@@ -56,10 +56,9 @@ Flags:
 
 Global Flags:
   -a, --agent string           User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
-      --captcha_challenge_wait_selector string   The wait selector for the captcha challenge (default "div.rc-imageselect-payload")
       --captcha_click_selector string            The selector element to click for the captcha box (default "div.g-recaptcha")
-      --captcha_iframe_uri string                The iframe URI to search for in order to load captcha challenge context (default "recaptcha/api2/bframe")
-      --captcha_iframe_wait_selector string      The selector element to wait for the captcha iframe (default "/html/body/div[6]/div[4]/iframe")
+      --captcha_click_sleep int               time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
+      --captcha_iframe_wait_selector string   The selector element to wait for the captcha iframe (default "body > div:nth-child(6) > div:nth-child(4) > iframe")
       --captcha_wait_selector string             The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
       --detect_access_denied   If access denied is encoutered, then we will take a counter action
@@ -71,6 +70,7 @@ Global Flags:
       --redis_password string  If we need a password to login to the redis database, specify it
       --redis_url string       If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
+  --user_data_dir string         User data dir for browser data if we specify non headless mode (default "/tmp/chrome_dev_1")
 ```
 
 ## Watch
@@ -96,10 +96,9 @@ Flags:
 
 Global Flags:
   -a, --agent string             User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
-      --captcha_challenge_wait_selector string   The wait selector for the captcha challenge (default "div.rc-imageselect-payload")
       --captcha_click_selector string            The selector element to click for the captcha box (default "div.g-recaptcha")
-      --captcha_iframe_uri string                The iframe URI to search for in order to load captcha challenge context (default "recaptcha/api2/bframe")
-      --captcha_iframe_wait_selector string      The selector element to wait for the captcha iframe (default "/html/body/div[6]/div[4]/iframe")
+      --captcha_click_sleep int               time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
+      --captcha_iframe_wait_selector string   The selector element to wait for the captcha iframe (default "body > div:nth-child(6) > div:nth-child(4) > iframe")
       --captcha_wait_selector string             The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --config string            config file (default is $HOME/.go-dynamic-fetch.yaml)
       --detect_access_denied     If access denied is encoutered, then we will take a counter action
@@ -111,6 +110,7 @@ Global Flags:
       --redis_password string    If we need a password to login to the redis database, specify it
       --redis_url string         If we want to send dumps to a redis database we must set a valid URL
   -t, --timeout int              Timeout for context - if none is specified a default background context will be used (default -1)
+      --user_data_dir string         User data dir for browser data if we specify non headless mode (default "/tmp/chrome_dev_1")
 ```
 
 ## Email
@@ -129,11 +129,10 @@ Flags:
 
 Global Flags:
   -a, --agent string                 User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
-      --captcha_challenge_wait_selector string   The wait selector for the captcha challenge (default "div.rc-imageselect-payload")
       --captcha_click_selector string     The selector element to click for the captcha box (default "div.g-recaptcha")
       --captcha_click_selectors strings   Override the default captcha click selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
-      --captcha_iframe_uri string         The iframe URI to search for in order to load captcha challenge context (default "recaptcha/api2/bframe")
-      --captcha_iframe_wait_selector string  The selector element to wait for the captcha iframe (default "/html/body/div[6]/div[4]/iframe")
+      --captcha_click_sleep int               time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
+      --captcha_iframe_wait_selector string   The selector element to wait for the captcha iframe (default "body > div:nth-child(6) > div:nth-child(4) > iframe")
       --captcha_wait_selector string      The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --captcha_wait_selectors strings    Override the default captcha wait selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
       --check_selectors strings      Selectors that are used to check for the given expected_texts
@@ -151,6 +150,7 @@ Global Flags:
   -i, --interval int                 Interval (in seconds) to wait in between watching a selector (default 30)
   -t, --timeout int                  Timeout for context - if none is specified a default background context will be used (default -1)
       --urls strings                 All URLs to watch
+      --user_data_dir string         User data dir for browser data if we specify non headless mode (default "/tmp/chrome_dev_1")
 ```
 
 # Examples
