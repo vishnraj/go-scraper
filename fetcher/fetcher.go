@@ -282,7 +282,7 @@ func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 					}
 					Log().Infof("Captcha for URL [%s] loaded", d.url)
 
-					c := pageSnaps{targetURL: d.url, checkLocation: false, dumpCaptcha: true, sendDumps: d.dumpToRedis, dumps: gCaptchaDumps, captchaIframeWaitSelector: d.captchaIframeWaitSelector}
+					c := pageSnaps{targetURL: d.url, checkLocation: false, dumpCaptcha: true, sendDumps: d.dumpToRedis, dumps: gCaptchaDumps, captchaIframeWaitSelector: d.captchaIframeWaitSelector, captchaClickSleep: d.captchaClickSleep}
 					err = c.before(ctx)
 					if err != nil {
 						err = s.after(ctx, err)
@@ -608,9 +608,8 @@ func (s *pageSnaps) before(ctx context.Context) error {
 	if s.dumpCaptcha {
 		Log().Infof("Finding iframe for captcha using URI [%s] for URL [%s]", s.captchaIframeWaitSelector, s.targetURL)
 
-		clickSleep := 5
-		Log().Infof("Sleeping for [%d] seconds after sleep to allow captcha challenge to load", clickSleep)
-		chromedp.Sleep(time.Duration(clickSleep) * time.Second).Do(ctx)
+		Log().Infof("Sleeping for [%d] seconds after sleep to allow captcha challenge to load", s.captchaClickSleep)
+		chromedp.Sleep(time.Duration(s.captchaClickSleep) * time.Second).Do(ctx)
 
 		err := chromedp.EvaluateAsDevTools(`document.querySelector('`+s.captchaIframeWaitSelector+`').contentWindow.document.body.outerHTML;`, &s.pageDump).Do(ctx)
 		if err != nil {
