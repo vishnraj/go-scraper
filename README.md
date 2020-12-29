@@ -20,7 +20,7 @@ Available Commands:
 Flags:
   -a, --agent string           User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
       --captcha_click_selector string            The selector element to click for the captcha box (default "div.g-recaptcha")
-      --captcha_click_sleep int               time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
+      --captcha_click_sleep int               Time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
       --captcha_iframe_wait_selector string   The selector element to wait for the captcha iframe (default "body > div:nth-child(6) > div:nth-child(4) > iframe")
       --captcha_wait_selector string             The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
@@ -33,6 +33,7 @@ Flags:
   --redis_key_expiration int   The duration, in secondds that keys will remain in redis for - default value of zero makes this indefinite
   --redis_password string      If we need a password to login to the redis database, specify it
   --redis_url string           If we want to send dumps to a redis database we must set a valid URL
+  --redis_write_timeout int    Timeout (seconds) for writing to redis (default 10)
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
   --user_data_dir string         User data dir for browser data if we specify non headless mode (default "/tmp/chrome_dev_1")
 
@@ -57,7 +58,7 @@ Flags:
 Global Flags:
   -a, --agent string           User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
       --captcha_click_selector string            The selector element to click for the captcha box (default "div.g-recaptcha")
-      --captcha_click_sleep int               time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
+      --captcha_click_sleep int               Time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
       --captcha_iframe_wait_selector string   The selector element to wait for the captcha iframe (default "body > div:nth-child(6) > div:nth-child(4) > iframe")
       --captcha_wait_selector string             The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --config string          config file (default is $HOME/.go-dynamic-fetch.yaml)
@@ -65,10 +66,11 @@ Global Flags:
       --error_dump             Dumps current page contents on error
       --error_location         Logs the current URL that we have arrived at on error
       --headless               Use headless shell
-      --redis_dump             Set this option for all dumps to go to the redis database that we connet to this app
+      --redis_dump              Set this option for all dumps to go to the redis database that we connet to this app
       --redis_key_expiration int   The duration, in secondds that keys will remain in redis for - default value of zero makes this indefinite
-      --redis_password string  If we need a password to login to the redis database, specify it
-      --redis_url string       If we want to send dumps to a redis database we must set a valid URL
+      --redis_password string   If we need a password to login to the redis database, specify it
+      --redis_url string        If we want to send dumps to a redis database we must set a valid URL
+      --redis_write_timeout int Timeout (seconds) for writing to redis (default 10)
   -t, --timeout int            Timeout for context - if none is specified a default background context will be used (default -1)
   --user_data_dir string         User data dir for browser data if we specify non headless mode (default "/tmp/chrome_dev_1")
 ```
@@ -97,7 +99,7 @@ Flags:
 Global Flags:
   -a, --agent string             User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
       --captcha_click_selector string            The selector element to click for the captcha box (default "div.g-recaptcha")
-      --captcha_click_sleep int               time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
+      --captcha_click_sleep int               Time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
       --captcha_iframe_wait_selector string   The selector element to wait for the captcha iframe (default "body > div:nth-child(6) > div:nth-child(4) > iframe")
       --captcha_wait_selector string             The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --config string            config file (default is $HOME/.go-dynamic-fetch.yaml)
@@ -109,6 +111,7 @@ Global Flags:
       --redis_key_expiration int The duration, in secondds that keys will remain in redis for - default value of zero makes this indefinite
       --redis_password string    If we need a password to login to the redis database, specify it
       --redis_url string         If we want to send dumps to a redis database we must set a valid URL
+      --redis_write_timeout int  Timeout (seconds) for writing to redis (default 10)
   -t, --timeout int              Timeout for context - if none is specified a default background context will be used (default -1)
       --user_data_dir string         User data dir for browser data if we specify non headless mode (default "/tmp/chrome_dev_1")
 ```
@@ -131,7 +134,7 @@ Global Flags:
   -a, --agent string                 User agent to request as - if not specified the default is used (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36")
       --captcha_click_selector string     The selector element to click for the captcha box (default "div.g-recaptcha")
       --captcha_click_selectors strings   Override the default captcha click selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
-      --captcha_click_sleep int               time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
+      --captcha_click_sleep int               Time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
       --captcha_iframe_wait_selector string   The selector element to wait for the captcha iframe (default "body > div:nth-child(6) > div:nth-child(4) > iframe")
       --captcha_wait_selector string      The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --captcha_wait_selectors strings    Override the default captcha wait selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
@@ -147,6 +150,7 @@ Global Flags:
       --redis_key_expiration int     The duration, in secondds that keys will remain in redis for - default value of zero makes this indefinite
       --redis_password string        If we need a password to login to the redis database, specify it
       --redis_url string             If we want to send dumps to a redis database we must set a valid URL
+      --redis_write_timeout int      Timeout (seconds) for writing to redis (default 10)
   -i, --interval int                 Interval (in seconds) to wait in between watching a selector (default 30)
   -t, --timeout int                  Timeout for context - if none is specified a default background context will be used (default -1)
       --urls strings                 All URLs to watch

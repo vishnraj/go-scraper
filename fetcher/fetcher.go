@@ -24,8 +24,11 @@ const (
 	// DefaultUserDataDir default user data dir for non-headless mode
 	DefaultUserDataDir = "/tmp/chrome_dev_1"
 
-	// DefaultInterval to wait (in seconds) when watching a selector
+	// DefaultInterval default time to wait (in seconds) when watching a selector
 	DefaultInterval = 30
+
+	// DefaultRedisWriteTimeout default timeout (seconds) for writing to redis
+	DefaultRedisWriteTimeout = 10
 
 	// DefaultSubject to send email with
 	DefaultSubject = "Go-Dynamic-Fetch Watcher"
@@ -726,50 +729,53 @@ func run(actions chromedp.Tasks, targetURL string) error {
 	return err
 }
 
-func redisWorker(redisURL string, redisPassword string, redisKeyExpiration int) {
+func setupRedis(cmd *cobra.Command) {
+	viper.BindPFlags(cmd.Flags())
+
+	redisURL := viper.GetString("redis_url")
+	redisPassword := viper.GetString("redis_password")
+	redisKeyExpiration := viper.GetInt("redis_key_expiration")
+	redisWriteTimeout := viper.GetInt("redis_write_timeout")
+
 	Log().Infof("Dumps will be logged to redis instance running at [%s]", redisURL)
 	Log().Infof("Redis key expiration set to [%d] seconds", redisKeyExpiration)
+	Log().Infof("Redis write timeout set to [%d] seconds", redisWriteTimeout)
 
+	go redisWorker(redisURL, redisPassword, redisKeyExpiration, redisWriteTimeout)
+}
+
+func redisWrite(client *redis.Client, data string, keyPrefix string, url string, redisKeyExpiration int) {
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	key := keyPrefix + "-" + timestamp + "-" + url
+	err := client.Set(client.Context(), key, data, time.Duration(redisKeyExpiration)*time.Second).Err()
+	if err == nil {
+		Log().Infof("For key [%s] redis write was successful", key)
+	} else {
+		Log().Errorf("For key [%s] error encountered during write: [%v]", key, err)
+	}
+}
+
+func redisWorker(redisURL string, redisPassword string, redisKeyExpiration int, redisWriteTimeout int) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     redisURL,
 		Password: redisPassword,
 	})
+	client.WithTimeout(time.Duration(redisWriteTimeout))
 	for {
 		select {
 		case d := <-gWaitErrorDumps:
 			{
-				timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-				key := "wait-errors-" + timestamp + "-" + d.URL
-				err := client.Set(client.Context(), key, d.ExtractText, time.Duration(redisKeyExpiration)*time.Second).Err()
-				if err == nil {
-					Log().Infof("For key [%s] redis write was successful", key)
-				} else {
-					Log().Errorf("For key [%s] error encountered during write: [%v]", key, err)
-				}
+				redisWrite(client, d.ExtractText, "wait-errors", d.URL, redisKeyExpiration)
 				break
 			}
 		case d := <-gDetectErrorDumps:
 			{
-				timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-				key := "detect-errors-" + timestamp + "-" + d.URL
-				err := client.Set(client.Context(), key, d.ExtractText, time.Duration(redisKeyExpiration)*time.Second).Err()
-				if err == nil {
-					Log().Infof("For key [%s] redis write was successful", key)
-				} else {
-					Log().Errorf("For key [%s] error encountered during write: [%v]", key, err)
-				}
+				redisWrite(client, d.ExtractText, "detect-errors", d.URL, redisKeyExpiration)
 				break
 			}
 		case d := <-gCaptchaDumps:
 			{
-				timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-				key := "catpcha-dumps-" + timestamp + "-" + d.URL
-				err := client.Set(client.Context(), key, d.ExtractText, time.Duration(redisKeyExpiration)*time.Second).Err()
-				if err == nil {
-					Log().Infof("For key [%s] redis write was successful", key)
-				} else {
-					Log().Errorf("For key [%s] error encountered during write: [%v]", key, err)
-				}
+				redisWrite(client, d.ExtractText, "catpcha-dumps", d.URL, redisKeyExpiration)
 				break
 			}
 		}
@@ -926,10 +932,7 @@ func PrintContent(cmd *cobra.Command) {
 
 	redisDumpOn := viper.GetBool("redis_dumps")
 	if redisDumpOn {
-		redisURL := viper.GetString("redis_url")
-		redisPassword := viper.GetString("redis_password")
-		redisKeyExpiration := viper.GetInt("redis_key_expiration")
-		go redisWorker(redisURL, redisPassword, redisKeyExpiration)
+		setupRedis(cmd)
 	}
 
 	fetchDumps := make(chan dumpData)
@@ -999,10 +1002,7 @@ func EmailContent(cmd *cobra.Command) {
 
 	redisDumpOn := viper.GetBool("redis_dumps")
 	if redisDumpOn {
-		redisURL := viper.GetString("redis_url")
-		redisPassword := viper.GetString("redis_password")
-		redisKeyExpiration := viper.GetInt("redis_key_expiration")
-		go redisWorker(redisURL, redisPassword, redisKeyExpiration)
+		setupRedis(cmd)
 	}
 
 	checkSelectors := viper.GetStringSlice("check_selectors")

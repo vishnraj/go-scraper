@@ -64,12 +64,13 @@ func init() {
 	rootCmd.PersistentFlags().String("captcha_wait_selector", fetcher.DefaultCaptchaWaitSelector, "The selector element to wait for so we can load the captcha box")
 	rootCmd.PersistentFlags().String("captcha_click_selector", fetcher.DefaultCaptchaClickSelector, "The selector element to click for the captcha box")
 	rootCmd.PersistentFlags().String("captcha_iframe_wait_selector", fetcher.DefaultCaptchaIframeWaitSelector, "The selector element to wait for the captcha iframe")
-	rootCmd.PersistentFlags().Int("captcha_click_sleep", fetcher.DefaultCaptchaClickSleep, "time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe")
+	rootCmd.PersistentFlags().Int("captcha_click_sleep", fetcher.DefaultCaptchaClickSleep, "Time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe")
 
 	rootCmd.PersistentFlags().Bool("redis_dump", false, "Set this option for all dumps to go to the redis database that we connet to this app")
 	rootCmd.PersistentFlags().String("redis_url", "", "If we want to send dumps to a redis database we must set a valid URL")
 	rootCmd.PersistentFlags().String("redis_password", "", "If we need a password to login to the redis database, specify it")
 	rootCmd.PersistentFlags().Int("redis_key_expiration", 0, "The duration, in secondds that keys will remain in redis for - default value of zero makes this indefinite")
+	rootCmd.PersistentFlags().Int("redis_write_timeout", fetcher.DefaultRedisWriteTimeout, "Timeout (seconds) for writing to redis")
 }
 
 // initConfig reads in config file and ENV variables if set.
