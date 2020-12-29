@@ -19,7 +19,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/vishnraj/go-dynamic-fetch/fetcher"
+	"github.com/vishnraj/go-scraper/fetcher"
 
 	"github.com/spf13/cobra"
 
@@ -30,7 +30,7 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "go-dynamic-fetch",
+	Use:   "go-scraper",
 	Short: "Provides utility to load dynamic web page content",
 	Long:  `Allows you to request data from dynamic web pages and interact with it`,
 }
@@ -47,7 +47,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// put everything in a config
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.go-dynamic-fetch.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.go-scraper.yaml)")
 
 	// specify all configurable values as options instead
 	// additional flags will be specified in sub-commands
@@ -85,9 +85,9 @@ func initConfig() {
 			fetcher.Log().Panicf("%v", err)
 		}
 
-		// Search config in home directory with name ".go-dynamic-fetch" (without extension).
+		// Search config in home directory with name ".go-scraper" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".go-dynamic-fetch")
+		viper.SetConfigName(".go-scraper")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

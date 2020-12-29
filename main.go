@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "github.com/vishnraj/go-dynamic-fetch/cmd"
+import "github.com/vishnraj/go-scraper/cmd"
 
 func main() {
 	cmd.Execute()

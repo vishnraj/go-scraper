@@ -19,7 +19,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/vishnraj/go-dynamic-fetch/fetcher"
+	"github.com/vishnraj/go-scraper/fetcher"
 
 	"github.com/spf13/cobra"
 )

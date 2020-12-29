@@ -31,7 +31,7 @@ const (
 	DefaultRedisWriteTimeout = 10
 
 	// DefaultSubject to send email with
-	DefaultSubject = "Go-Dynamic-Fetch Watcher"
+	DefaultSubject = "Go-Scraper Watcher"
 
 	// DefaultCaptchaWaitSelector default to wait for captcha box on block
 	DefaultCaptchaWaitSelector = `div.re-captcha`
