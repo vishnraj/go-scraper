@@ -182,6 +182,7 @@ type pageSnaps struct {
 func (n navigateActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	actions = append(actions,
 		chromedp.ActionFunc(func(ctx context.Context) error {
+			Log().Infof("Navigating to URL [%s]", n.url)
 			err := chromedp.Navigate(n.url).Do(ctx)
 			if err != nil {
 				Log().Errorf("%v", err)
