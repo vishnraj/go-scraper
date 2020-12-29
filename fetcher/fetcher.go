@@ -175,6 +175,8 @@ type pageSnaps struct {
 
 	currentURL string
 	pageDump   string
+
+	dumpOnError bool
 }
 
 func (n navigateActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
@@ -205,7 +207,7 @@ func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	if d.detectAccessDenied {
 		actions = append(actions,
 			chromedp.ActionFunc(func(ctx context.Context) error {
-				s := pageSnaps{targetURL: d.url, checkLocation: d.locationOnError, dumpPageContents: d.dumpOnError, sendDumps: d.dumpToRedis, dumps: gDetectErrorDumps}
+				s := pageSnaps{targetURL: d.url, checkLocation: d.locationOnError, dumpPageContents: true, sendDumps: d.dumpToRedis, dumps: gDetectErrorDumps, dumpOnError: d.dumpOnError}
 
 				err := s.before(ctx)
 				if err != nil {
@@ -235,7 +237,7 @@ func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	if d.detectCaptchaBox {
 		actions = append(actions,
 			chromedp.ActionFunc(func(ctx context.Context) error {
-				s := pageSnaps{targetURL: d.url, checkLocation: d.locationOnError, dumpPageContents: d.dumpOnError, sendDumps: d.dumpToRedis, dumps: gDetectErrorDumps}
+				s := pageSnaps{targetURL: d.url, checkLocation: d.locationOnError, dumpPageContents: true, sendDumps: d.dumpToRedis, dumps: gDetectErrorDumps, dumpOnError: d.dumpOnError}
 
 				err := s.before(ctx)
 				if err != nil {
@@ -285,7 +287,7 @@ func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 					}
 					Log().Infof("Captcha for URL [%s] loaded", d.url)
 
-					c := pageSnaps{targetURL: d.url, checkLocation: false, dumpCaptcha: true, sendDumps: d.dumpToRedis, dumps: gCaptchaDumps, captchaIframeWaitSelector: d.captchaIframeWaitSelector, captchaClickSleep: d.captchaClickSleep}
+					c := pageSnaps{targetURL: d.url, checkLocation: false, dumpCaptcha: true, sendDumps: d.dumpToRedis, dumps: gCaptchaDumps, captchaIframeWaitSelector: d.captchaIframeWaitSelector, captchaClickSleep: d.captchaClickSleep, dumpOnError: d.dumpOnError}
 					err = c.before(ctx)
 					if err != nil {
 						err = s.after(ctx, err)
@@ -297,7 +299,7 @@ func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 						Log().Errorf("%v", err)
 						return err
 					}
-					err = fmt.Errorf("Successfully loaded the captcha challenge, but we are still blocked by it, so we are just going to error out and dump the contents")
+					err = fmt.Errorf("Successfully loaded the captcha challenge, but we are still blocked by it, so we are just going to error out")
 					err = c.after(ctx, err)
 					if err != nil {
 						Log().Errorf("%v", err)
@@ -315,7 +317,7 @@ func (w waitActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	if len(w.waitSelector) != 0 {
 		actions = append(actions,
 			chromedp.ActionFunc(func(ctx context.Context) error {
-				s := pageSnaps{targetURL: w.url, checkLocation: w.locationOnError, dumpPageContents: w.dumpOnError, sendDumps: w.dumpToRedis, dumps: gWaitErrorDumps}
+				s := pageSnaps{targetURL: w.url, checkLocation: w.locationOnError, dumpPageContents: true, sendDumps: w.dumpToRedis, dumps: gWaitErrorDumps, dumpOnError: w.dumpOnError}
 
 				err := s.before(ctx)
 				if err != nil {
@@ -634,7 +636,7 @@ func (s *pageSnaps) before(ctx context.Context) error {
 
 func (s *pageSnaps) after(ctx context.Context, err error) error {
 	Log().Infof("Performing after page snap steps for URL [%s]", s.targetURL)
-	if err != nil && (s.dumpPageContents || s.dumpCaptcha) {
+	if err != nil && (s.dumpPageContents || s.dumpCaptcha) && s.dumpOnError {
 		if s.sendDumps {
 			Log().Errorf("Dumping content for URL [%s] to redis", s.targetURL)
 			go func() {
