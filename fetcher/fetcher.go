@@ -322,6 +322,7 @@ func (w waitActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 					Log().Errorf("%v", err)
 				}
 
+				Log().Infof("Waiting on selector [%s] for URL [%s]", w.waitSelector, w.url)
 				err = chromedp.WaitVisible(w.waitSelector).Do(ctx)
 				err = s.after(ctx, err)
 				if err != nil {
@@ -595,18 +596,23 @@ func extractData(ctx context.Context, selector string, selectorType string) (str
 }
 
 func (s *pageSnaps) before(ctx context.Context) error {
+	Log().Infof("Performing before page snap steps for URL [%s]", s.targetURL)
 	if s.checkLocation {
+		Log().Infof("Getting location for URL [%s]", s.targetURL)
 		err := chromedp.Location(&s.currentURL).Do(ctx)
 		if err != nil {
 			return err
 		}
+		Log().Infof("Successfully got location for URL [%s]", s.targetURL)
 	}
 	if s.dumpPageContents {
+		Log().Infof("Extracting page contents for URL [%s]", s.targetURL)
 		res, err := extractData(ctx, "", "dump")
 		if err != nil {
 			return err
 		}
 		s.pageDump = res
+		Log().Infof("Successfully extracted page contents for URL [%s]", s.targetURL)
 	}
 	if s.dumpCaptcha {
 		Log().Infof("Finding iframe for captcha using URI [%s] for URL [%s]", s.captchaIframeWaitSelector, s.targetURL)
@@ -622,10 +628,12 @@ func (s *pageSnaps) before(ctx context.Context) error {
 		Log().Infof("Successfully loaded captcha for URL [%s]", s.targetURL)
 	}
 
+	Log().Infof("Done with before page snap steps for URL [%s]", s.targetURL)
 	return nil
 }
 
 func (s *pageSnaps) after(ctx context.Context, err error) error {
+	Log().Infof("Performing after page snap steps for URL [%s]", s.targetURL)
 	if err != nil && (s.dumpPageContents || s.dumpCaptcha) {
 		if s.sendDumps {
 			Log().Errorf("Dumping content for URL [%s] to redis", s.targetURL)
@@ -640,6 +648,8 @@ func (s *pageSnaps) after(ctx context.Context, err error) error {
 	if err != nil && s.checkLocation {
 		Log().Errorf("Logging the current URL location as [%s] for our original target [%s]", s.currentURL, s.targetURL)
 	}
+
+	Log().Infof("Done with after page snap steps for URL [%s]", s.targetURL)
 	return err
 }
 
