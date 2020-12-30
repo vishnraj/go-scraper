@@ -46,6 +46,7 @@ func init() {
 	watchCmd.PersistentFlags().StringSlice("check_selectors", nil, "Selectors that are used to check for the given expected_texts")
 	watchCmd.PersistentFlags().StringSlice("check_types", nil, "The types of selectors for each check selector in order, which correspond to the ones in check_selectors - specify none to not use one for URL at that index")
 	watchCmd.PersistentFlags().StringSlice("expected_texts", nil, "Pieces of texts that represent the normal state of an item - when the status is updated, the the desired user action will be taken")
+	watchCmd.PersistentFlags().StringSlice("notify_paths", nil, "A url path/domain sequence that indicates a more unique circumstance that we might want to be notified about")
 
 	watchCmd.PersistentFlags().StringSlice("captcha_wait_selectors", nil, "Override the default captcha wait selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd")
 	watchCmd.PersistentFlags().StringSlice("captcha_click_selectors", nil, "Override the default captcha click selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd")

@@ -107,6 +107,9 @@ type detectActions struct {
 	dumpOnError     bool
 
 	dumpToRedis bool
+
+	notifyPath      string         // a url path/domain sequence that indicates a more unique circumstance that we might want to be notified about
+	postActionEmail chan emailData // only if we want to email on certain detection cases
 }
 
 type waitActions struct {
@@ -205,6 +208,34 @@ func (n navigateActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 }
 
 func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
+	if len(d.notifyPath) != 0 {
+		actions = append(actions,
+			chromedp.ActionFunc(func(ctx context.Context) error {
+				Log().Infof("For URL [%s] check for path [%s] in URL that we should notify on", d.url, d.notifyPath)
+
+				var currentURL string
+				err := chromedp.Location(&currentURL).Do(ctx)
+				if err != nil {
+					Log().Errorf("%v", err)
+					return err
+				}
+
+				if strings.Contains(currentURL, d.notifyPath) {
+					err = fmt.Errorf("Found [%s] path in URL [%s], for target URL [%s] so we are performing notify action(s) that are set", d.notifyPath, currentURL, d.url)
+
+					go func() {
+						if d.postActionEmail != nil {
+							d.postActionEmail <- emailData{URL: d.url, Text: currentURL}
+						}
+					}()
+					return err
+				}
+
+				Log().Infof("For target URL [%s] the current URL [%s] didn't find path [%s] in URL that we should notify on so proceeding to next action", d.url, currentURL, d.notifyPath)
+
+				return nil
+			}))
+	}
 	if d.detectAccessDenied {
 		actions = append(actions,
 			chromedp.ActionFunc(func(ctx context.Context) error {
@@ -1003,6 +1034,11 @@ func EmailContent(cmd *cobra.Command) {
 		Log().Infof("Override captcha click selectors: [%v]", captchaOverrideClickSelectors)
 	}
 
+	notifyPaths := viper.GetStringSlice("notify_paths")
+	if len(notifyPaths) != 0 {
+		Log().Infof("URL Paths to detect and notify on: [%v]", notifyPaths)
+	}
+
 	errorDump := viper.GetBool("error_dump")
 	errorLocation := viper.GetBool("error_location")
 
@@ -1046,6 +1082,7 @@ func EmailContent(cmd *cobra.Command) {
 	}
 
 	for i, u := range urls {
+		var notifyPath string
 		capWaitSelector := captchaWaitSelector
 		capClickSelector := captchaClickSelector
 		overrideCapWaitSelector := captchaOverrideWaitSelectors[i]
@@ -1058,10 +1095,16 @@ func EmailContent(cmd *cobra.Command) {
 			Log().Infof("Using override captcha click selector [%s] for URL [%s]", overrideCapClickSelector, u)
 			capClickSelector = overrideCapClickSelector
 		}
+		if len(notifyPaths) != 0 {
+			notifyPath = notifyPaths[i]
+		}
 
 		actionGens[i] = append(actionGens[i], navigateActions{url: u})
-		actionGens[i] = append(actionGens[i], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, detectCaptchaBox: detectCaptchaBoxOn, captchaWaitSelector: capWaitSelector, captchaClickSelector: capClickSelector, captchaIframeWaitSelector: captchaIframeWaitSelector, captchaClickSleep: captchaClickSleep, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
+
+		actionGens[i] = append(actionGens[i], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, detectCaptchaBox: detectCaptchaBoxOn, captchaWaitSelector: capWaitSelector, captchaClickSelector: capClickSelector, captchaIframeWaitSelector: captchaIframeWaitSelector, captchaClickSleep: captchaClickSleep, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn, notifyPath: notifyPath, postActionEmail: emailMetaData})
+
 		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
+
 		e := emailActions{postActionData: emailMetaData, url: u}
 		if checkSelectors != nil && expectedTexts != nil {
 			e.checkSelector = checkSelectors[i]
