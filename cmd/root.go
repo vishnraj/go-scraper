@@ -59,6 +59,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("error_dump", false, "Dumps current page contents on error")
 	rootCmd.PersistentFlags().Bool("error_location", false, "Logs the current URL that we have arrived at on error")
 
+	rootCmd.PersistentFlags().Bool("detect_notify_path", false, "If a desired notify path is encountered, for a given URL, perform notification action")
 	rootCmd.PersistentFlags().Bool("detect_access_denied", false, "If access denied is encoutered, then we will take a counter action")
 	rootCmd.PersistentFlags().Bool("detect_captcha_box", false, "If a captcha box is encoutered, then we will take a counter action")
 	rootCmd.PersistentFlags().String("captcha_wait_selector", fetcher.DefaultCaptchaWaitSelector, "The selector element to wait for so we can load the captcha box")

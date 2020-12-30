@@ -108,8 +108,9 @@ type detectActions struct {
 
 	dumpToRedis bool
 
-	notifyPath      string         // a url path/domain sequence that indicates a more unique circumstance that we might want to be notified about
-	postActionEmail chan emailData // only if we want to email on certain detection cases
+	detectNotifyPath bool
+	notifyPath       string         // a url path/domain sequence that indicates a more unique circumstance that we might want to be notified about
+	postActionEmail  chan emailData // only if we want to email on certain detection cases
 }
 
 type waitActions struct {
@@ -208,7 +209,7 @@ func (n navigateActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 }
 
 func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
-	if len(d.notifyPath) != 0 {
+	if d.detectNotifyPath && len(d.notifyPath) != 0 {
 		actions = append(actions,
 			chromedp.ActionFunc(func(ctx context.Context) error {
 				Log().Infof("For URL [%s] check for path [%s] in URL that we should notify on", d.url, d.notifyPath)
@@ -1034,9 +1035,10 @@ func EmailContent(cmd *cobra.Command) {
 		Log().Infof("Override captcha click selectors: [%v]", captchaOverrideClickSelectors)
 	}
 
+	detectNotifyPath := viper.GetBool("detect_notify_path")
 	notifyPaths := viper.GetStringSlice("notify_paths")
-	if len(notifyPaths) != 0 {
-		Log().Infof("URL Paths to detect and notify on: [%v]", notifyPaths)
+	if detectNotifyPath {
+		Log().Infof("Will detect notify URL Paths - desired paths: [%v]", notifyPaths)
 	}
 
 	errorDump := viper.GetBool("error_dump")
@@ -1101,7 +1103,7 @@ func EmailContent(cmd *cobra.Command) {
 
 		actionGens[i] = append(actionGens[i], navigateActions{url: u})
 
-		actionGens[i] = append(actionGens[i], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, detectCaptchaBox: detectCaptchaBoxOn, captchaWaitSelector: capWaitSelector, captchaClickSelector: capClickSelector, captchaIframeWaitSelector: captchaIframeWaitSelector, captchaClickSleep: captchaClickSleep, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn, notifyPath: notifyPath, postActionEmail: emailMetaData})
+		actionGens[i] = append(actionGens[i], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, detectCaptchaBox: detectCaptchaBoxOn, captchaWaitSelector: capWaitSelector, captchaClickSelector: capClickSelector, captchaIframeWaitSelector: captchaIframeWaitSelector, captchaClickSleep: captchaClickSleep, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn, notifyPath: notifyPath, postActionEmail: emailMetaData, detectNotifyPath: detectNotifyPath})
 
 		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
 

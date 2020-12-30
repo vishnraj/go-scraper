@@ -25,6 +25,8 @@ Flags:
       --captcha_wait_selector string             The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --config string          config file (default is $HOME/.go-scraper.yaml)
       --detect_access_denied   If access denied is encoutered, then we will take a counter action
+      --detect_captcha_box                    If a captcha box is encoutered, then we will take a counter action
+      --detect_notify_path                    If a desired notify path is encountered, for a given URL, perform notification action
       --error_dump             Dumps current page contents on error
       --error_location         Logs the current URL that we have arrived at on error
       --headless               Use headless shell
@@ -105,6 +107,8 @@ Global Flags:
       --captcha_wait_selector string             The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --config string            config file (default is $HOME/.go-scraper.yaml)
       --detect_access_denied     If access denied is encoutered, then we will take a counter action
+      --detect_captcha_box                    If a captcha box is encoutered, then we will take a counter action
+      --detect_notify_path                    If a desired notify path is encountered, for a given URL, perform notification action
       --error_dump               Dumps current page contents on error
       --error_location           Logs the current URL that we have arrived at on error
       --headless                 Use headless shell
@@ -142,8 +146,10 @@ Global Flags:
       --check_selectors strings      Selectors that are used to check for the given expected_texts
       --check_types strings          The types of selectors for each check selector in order, which correspond to the ones in check_selectors - specify none to not use one for URL at that index
       --config string                config file (default is $HOME/.go-scraper.yaml)
-      --expected_texts strings       Pieces of texts that represent the normal state of an item - when the status is updated, the the desired user action will be taken
       --detect_access_denied         If access denied is encoutered, then we will take a counter action
+      --detect_captcha_box                    If a captcha box is encoutered, then we will take a counter action
+      --detect_notify_path                    If a desired notify path is encountered, for a given URL, perform notification action
+      --expected_texts strings       Pieces of texts that represent the normal state of an item - when the status is updated, the the desired user action will be taken
       --error_dump                   Dumps current page contents on error
       --error_location               Logs the current URL that we have arrived at on error
       --headless                     Use headless shell
