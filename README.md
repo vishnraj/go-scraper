@@ -93,6 +93,7 @@ Flags:
       --expected_texts strings    Pieces of texts that represent the normal state of an item - when the status is updated, the the desired user action will be taken
   -h, --help                     help for watch
   -i, --interval int             Interval (in seconds) to wait in between watching a selector (default 30)
+      --notify_paths strings     A url path/domain sequence that indicates a more unique circumstance that we might want to be notified about
       --wait_selectors strings   All selectors, in order of URLs passed in, to wait for
       --urls strings             All URLs to watch
 
@@ -152,6 +153,7 @@ Global Flags:
       --redis_url string             If we want to send dumps to a redis database we must set a valid URL
       --redis_write_timeout int      Timeout (seconds) for writing to redis (default 10)
   -i, --interval int                 Interval (in seconds) to wait in between watching a selector (default 30)
+      --notify_paths strings              A url path/domain sequence that indicates a more unique circumstance that we might want to be notified about
   -t, --timeout int                  Timeout for context - if none is specified a default background context will be used (default -1)
       --urls strings                 All URLs to watch
       --user_data_dir string         User data dir for browser data if we specify non headless mode (default "/tmp/chrome_dev_1")
