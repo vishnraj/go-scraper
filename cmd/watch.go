@@ -50,6 +50,7 @@ func init() {
 
 	watchCmd.PersistentFlags().StringSlice("captcha_wait_selectors", nil, "Override the default captcha wait selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd")
 	watchCmd.PersistentFlags().StringSlice("captcha_click_selectors", nil, "Override the default captcha click selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd")
+	watchCmd.PersistentFlags().StringSlice("captcha_iframe_wait_selectors", nil, "Override captcha iframe wait selector for each URL")
 
 	watchCmd.PersistentFlags().IntP("interval", "i", fetcher.DefaultInterval, "Interval (in seconds) to wait in between watching a selector")
 }

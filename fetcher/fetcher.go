@@ -292,13 +292,18 @@ func (d detectActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 					return err
 				}
 
-				Log().Infof("Wait complete, captcha box loaded, clicking captcha box for URL [%s] using selector [%s]", d.url, d.captchaClickSelector)
-
-				err = chromedp.SendKeys(d.captchaClickSelector, kb.Enter).Do(ctx)
-				err = s.after(ctx, err)
+				Log().Infof("Wait complete, captcha box loaded, clicking captcha box for URL [%s] using selector [%s] using mouse click method", d.url, d.captchaClickSelector)
+				err = chromedp.Click(d.captchaClickSelector).Do(ctx)
 				if err != nil {
 					Log().Errorf("%v", err)
-					return err
+
+					Log().Info("Failed to click captcha via mouse, trying ENTER key method")
+					err = chromedp.SendKeys(d.captchaClickSelector, kb.Enter).Do(ctx)
+					err = s.after(ctx, err)
+					if err != nil {
+						Log().Errorf("%v", err)
+						return err
+					}
 				}
 
 				Log().Infof("Successfully clicked captcha box for URL [%s] using selector [%s]", d.url, d.captchaClickSelector)
@@ -631,23 +636,23 @@ func extractData(ctx context.Context, selector string, selectorType string) (str
 }
 
 func (s *pageSnaps) before(ctx context.Context) error {
-	Log().Infof("Performing before page snap steps for URL [%s]", s.targetURL)
+	Log().Debugf("Performing before page snap steps for URL [%s]", s.targetURL)
 	if s.checkLocation {
-		Log().Infof("Getting location for URL [%s]", s.targetURL)
+		Log().Debugf("Getting location for URL [%s]", s.targetURL)
 		err := chromedp.Location(&s.currentURL).Do(ctx)
 		if err != nil {
 			return err
 		}
-		Log().Infof("Successfully got location for URL [%s]", s.targetURL)
+		Log().Debugf("Successfully got location for URL [%s]", s.targetURL)
 	}
 	if s.dumpPageContents {
-		Log().Infof("Extracting page contents for URL [%s]", s.targetURL)
+		Log().Debugf("Extracting page contents for URL [%s]", s.targetURL)
 		res, err := extractData(ctx, "", "dump")
 		if err != nil {
 			return err
 		}
 		s.pageDump = res
-		Log().Infof("Successfully extracted page contents for URL [%s]", s.targetURL)
+		Log().Debugf("Successfully extracted page contents for URL [%s]", s.targetURL)
 	}
 	if s.dumpCaptcha {
 		Log().Infof("Finding iframe for captcha using URI [%s] for URL [%s]", s.captchaIframeWaitSelector, s.targetURL)
@@ -663,12 +668,12 @@ func (s *pageSnaps) before(ctx context.Context) error {
 		Log().Infof("Successfully loaded captcha for URL [%s]", s.targetURL)
 	}
 
-	Log().Infof("Done with before page snap steps for URL [%s]", s.targetURL)
+	Log().Debugf("Done with before page snap steps for URL [%s]", s.targetURL)
 	return nil
 }
 
 func (s *pageSnaps) after(ctx context.Context, err error) error {
-	Log().Infof("Performing after page snap steps for URL [%s]", s.targetURL)
+	Log().Debugf("Performing after page snap steps for URL [%s]", s.targetURL)
 	if err != nil && (s.dumpPageContents || s.dumpCaptcha) && s.dumpOnError {
 		if s.sendDumps {
 			Log().Errorf("Dumping content for URL [%s] to redis", s.targetURL)
@@ -684,7 +689,7 @@ func (s *pageSnaps) after(ctx context.Context, err error) error {
 		Log().Errorf("Logging the current URL location as [%s] for our original target [%s]", s.currentURL, s.targetURL)
 	}
 
-	Log().Infof("Done with after page snap steps for URL [%s]", s.targetURL)
+	Log().Debugf("Done with after page snap steps for URL [%s]", s.targetURL)
 	return err
 }
 
@@ -835,6 +840,18 @@ func Log() *logger.Logger {
 			panic(err)
 		}
 		gLog.SetFormat("[%{level}] [%{time}] %{filename}:%{line}: %{message}")
+
+		level := viper.GetString("log_level")
+		switch level {
+		case "DEBUG":
+			gLog.Infof("Setting log level to [%s]", level)
+			gLog.SetLogLevel(logger.DebugLevel)
+			break
+		case "INFO":
+		case "":
+		default:
+			gLog.Info("Log level is set to [INFO] by default")
+		}
 	}
 
 	return gLog
@@ -915,12 +932,19 @@ func CommonWatchChecks(cmd *cobra.Command) error {
 		if len(captchaClickSelectors) == 0 {
 			return fmt.Errorf("We require a non-empty slice of captcha_click_selectors")
 		}
+		captchaIframeWaitSelectors := viper.GetStringSlice("captcha_iframe_wait_selectors")
+		if len(captchaClickSelectors) == 0 {
+			return fmt.Errorf("We require a non-empty slice of captcha_iframe_wait_selectors")
+		}
 
 		if len(urls) != len(captchaWaitSelectors) {
 			return fmt.Errorf("Number of URLs and captcha_wait_selectors passed in must have the same length")
 		}
 		if len(urls) != len(captchaClickSelectors) {
 			return fmt.Errorf("Number of URLs and captcha_click_selectors passed in must have the same length")
+		}
+		if len(urls) != len(captchaIframeWaitSelectors) {
+			return fmt.Errorf("Number of URLs and captcha_iframe_wait_selectors passed in must have the same length")
 		}
 	}
 
@@ -1025,14 +1049,17 @@ func EmailContent(cmd *cobra.Command) {
 	detectCaptchaBoxOn := viper.GetBool("detect_captcha_box")
 	captchaWaitSelector := viper.GetString("captcha_wait_selector")
 	captchaClickSelector := viper.GetString("captcha_click_selector")
-	captchaOverrideWaitSelectors := viper.GetStringSlice("captcha_wait_selectors")
-	captchaOverrideClickSelectors := viper.GetStringSlice("captcha_click_selectors")
 	captchaIframeWaitSelector := viper.GetString("captcha_iframe_wait_selector")
 	captchaClickSleep := viper.GetInt("captcha_click_sleep")
+
+	captchaOverrideWaitSelectors := viper.GetStringSlice("captcha_wait_selectors")
+	captchaOverrideClickSelectors := viper.GetStringSlice("captcha_click_selectors")
+	captchaOverrideIframeWaitSelectors := viper.GetStringSlice("captcha_iframe_wait_selectors")
 	if detectCaptchaBoxOn {
 		Log().Infof("Taking action against captcha boxes using default wait selector [%s], box selector [%s], iframe wait selector [%s] and captcha click seconds [%d]", captchaWaitSelector, captchaClickSelector, captchaIframeWaitSelector, captchaClickSleep)
 		Log().Infof("Override captcha wait selectors: [%v]", captchaOverrideWaitSelectors)
 		Log().Infof("Override captcha click selectors: [%v]", captchaOverrideClickSelectors)
+		Log().Infof("Override captcha iframe wait selectors: [%v]", captchaOverrideIframeWaitSelectors)
 	}
 
 	detectNotifyPath := viper.GetBool("detect_notify_path")
@@ -1087,15 +1114,22 @@ func EmailContent(cmd *cobra.Command) {
 		var notifyPath string
 		capWaitSelector := captchaWaitSelector
 		capClickSelector := captchaClickSelector
+		capIframeWaitSelector := captchaIframeWaitSelector
+
 		overrideCapWaitSelector := captchaOverrideWaitSelectors[i]
 		overrideCapClickSelector := captchaOverrideClickSelectors[i]
+		overrideCapIframeWaitSelector := captchaOverrideIframeWaitSelectors[i]
 		if len(overrideCapWaitSelector) != 0 {
-			Log().Infof("Using override captcha wait selector [%s] for URL [%s]", overrideCapWaitSelector, u)
 			capWaitSelector = overrideCapWaitSelector
+			Log().Infof("Using override captcha wait selector [%s] for URL [%s]", capWaitSelector, u)
 		}
 		if len(overrideCapClickSelector) != 0 {
-			Log().Infof("Using override captcha click selector [%s] for URL [%s]", overrideCapClickSelector, u)
 			capClickSelector = overrideCapClickSelector
+			Log().Infof("Using override captcha click selector [%s] for URL [%s]", capClickSelector, u)
+		}
+		if len(overrideCapIframeWaitSelector) != 0 {
+			capIframeWaitSelector = overrideCapIframeWaitSelector
+			Log().Infof("Using override iframe wait selector [%s] for URL [%s]", capIframeWaitSelector, u)
 		}
 		if len(notifyPaths) != 0 {
 			notifyPath = notifyPaths[i]
@@ -1103,7 +1137,7 @@ func EmailContent(cmd *cobra.Command) {
 
 		actionGens[i] = append(actionGens[i], navigateActions{url: u})
 
-		actionGens[i] = append(actionGens[i], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, detectCaptchaBox: detectCaptchaBoxOn, captchaWaitSelector: capWaitSelector, captchaClickSelector: capClickSelector, captchaIframeWaitSelector: captchaIframeWaitSelector, captchaClickSleep: captchaClickSleep, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn, notifyPath: notifyPath, postActionEmail: emailMetaData, detectNotifyPath: detectNotifyPath})
+		actionGens[i] = append(actionGens[i], detectActions{url: u, detectAccessDenied: detectAccessDeniedOn, detectCaptchaBox: detectCaptchaBoxOn, captchaWaitSelector: capWaitSelector, captchaClickSelector: capClickSelector, captchaIframeWaitSelector: capIframeWaitSelector, captchaClickSleep: captchaClickSleep, dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn, notifyPath: notifyPath, postActionEmail: emailMetaData, detectNotifyPath: detectNotifyPath})
 
 		actionGens[i] = append(actionGens[i], waitActions{url: u, waitSelector: waitSelectors[i], dumpOnError: errorDump, locationOnError: errorLocation, dumpToRedis: redisDumpOn})
 

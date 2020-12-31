@@ -55,6 +55,7 @@ func init() {
 	rootCmd.PersistentFlags().String("user_data_dir", fetcher.DefaultUserDataDir, "User data dir for browser data if we specify non headless mode")
 	rootCmd.PersistentFlags().StringSliceP("agents", "a", fetcher.DefaultUserAgents, "User agent(s) to request as - if not specified the default is used")
 	rootCmd.PersistentFlags().IntP("timeout", "t", -1, "Timeout for context - if none is specified a default background context will be used")
+	rootCmd.PersistentFlags().String("log_level", "INFO", "The default log level for the app - by default it will be INFO, but can specify DEBUG")
 
 	rootCmd.PersistentFlags().Bool("error_dump", false, "Dumps current page contents on error")
 	rootCmd.PersistentFlags().Bool("error_location", false, "Logs the current URL that we have arrived at on error")

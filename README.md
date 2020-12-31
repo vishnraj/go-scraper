@@ -89,6 +89,7 @@ Available Commands:
 
 Flags:
       --captcha_click_selectors strings   Override the default captcha click selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
+      --captcha_iframe_wait_selectors strings   Override captcha iframe wait selector for each URL
       --captcha_wait_selectors strings    Override the default captcha wait selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
       --check_selectors strings   Selectors that are used to check for the given expected-texts
       --check_types strings       The types of selectors for each check selector in order, which correspond to the ones in check_selectors - specify none to not use one for URL at that index
@@ -141,6 +142,7 @@ Global Flags:
       --captcha_click_selectors strings   Override the default captcha click selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
       --captcha_click_sleep int               Time (seconds) we sleep after a captcha click, to allow the captcha challenge to get loaded into the iframe (default 5)
       --captcha_iframe_wait_selector string   The selector element to wait for the captcha iframe (default "body > div:nth-child(6) > div:nth-child(4) > iframe")
+      --captcha_iframe_wait_selectors strings   Override captcha iframe wait selector for each URL
       --captcha_wait_selector string      The selector element to wait for so we can load the captcha box (default "div.re-captcha")
       --captcha_wait_selectors strings    Override the default captcha wait selector for each URL or leave empty for that URL to just use (user provided) default from root level cmd
       --check_selectors strings      Selectors that are used to check for the given expected_texts
