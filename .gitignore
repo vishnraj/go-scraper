@@ -1,0 +1,6 @@
+*.html
+*.yaml
+*.yml
+*.log
+*.png
+.DS_Store
