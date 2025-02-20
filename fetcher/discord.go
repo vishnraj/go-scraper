@@ -3,6 +3,7 @@ package fetcher
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -80,7 +81,12 @@ func (d discordWatchFunc) sendDiscordNotification(data discordData) {
 
 	Log().Infof("Sending payload to Discord: %s", string(jsonData))
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
 	resp, err := client.Post(d.webhookURL, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		Log().Errorf("Error sending Discord notification: %v", err)
