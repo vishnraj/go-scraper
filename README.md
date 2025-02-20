@@ -167,6 +167,22 @@ Global Flags:
       --user_data_dir string         User data dir for browser data if we specify non headless mode (default "/tmp/chrome_dev_1")
 ```
 
+## Discord
+
+Inherits the same options as `Email` above from `Watch`.
+
+```
+This subcommand sends notifications to a Discord channel via a webhook
+
+Usage:
+  go-scraper watch discord [flags]
+
+Flags:
+      --discord_username string   Username to display in Discord notifications
+  -h, --help                      help for discord
+      --webhook string            Discord webhook URL to send notifications to
+```
+
 # Examples
 Run from within headless-shell docker image to specify --headless  
 Otherwise, it will need to run by calling into the chrome binary, which must
