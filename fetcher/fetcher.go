@@ -741,7 +741,6 @@ func setOpt(targetURL string) ([]func(*chromedp.ExecAllocator), error) {
 			chromedp.Flag("ignore-certificate-errors", true),
 			chromedp.Flag("disable-web-security", true),
 			chromedp.Flag("disable-dev-shm-usage", true),
-			chromedp.Flag("disable-http2", true),
 		}
 	}
 
