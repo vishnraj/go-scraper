@@ -715,35 +715,43 @@ func setOpt(targetURL string) ([]func(*chromedp.ExecAllocator), error) {
 	}
 
 	runHeadless := viper.GetBool("headless")
+	overrideFlags := viper.GetStringSlice("override_flags")
 	var opts []func(*chromedp.ExecAllocator)
-	if !runHeadless {
-		userDataDir := viper.GetString("user_data_dir")
-		Log().Infof("Running without headless enabled, using user_data_dir [%s]", userDataDir)
+
+	if len(overrideFlags) > 0 {
+		Log().Infof("Override flags provided; using custom chrome flags: %s", overrideFlags)
 		opts = []chromedp.ExecAllocatorOption{
 			chromedp.UserAgent(agent),
-			chromedp.NoFirstRun,
-			chromedp.NoDefaultBrowserCheck,
-			chromedp.Flag("user-data-dir", userDataDir),
-			chromedp.Flag("disable-site-isolation-trials", true),
-			chromedp.Flag("disable-web-security", true),
-			chromedp.Flag("test-type", true),
+		}
+		for _, f := range overrideFlags {
+			opts = append(opts, chromedp.Flag(f, true))
 		}
 	} else {
-		Log().Info("Running in headless mode")
-		opts = []chromedp.ExecAllocatorOption{
-			chromedp.UserAgent(agent),
-			chromedp.Flag("headless", true),
-			chromedp.Flag("hide-scrollbars", true),
-			chromedp.Flag("mute-audio", true),
-			chromedp.Flag("disable-gpu", true),
-			chromedp.Flag("no-sandbox", true),
-			chromedp.Flag("allow-insecure-localhost", true),
-			chromedp.Flag("ignore-certificate-errors", true),
-			chromedp.Flag("disable-web-security", true),
-			chromedp.Flag("disable-dev-shm-usage", true),
-			chromedp.Flag("disable-setuid-sandbox", true),
-			chromedp.Flag("single-process", true),
-			chromedp.Flag("no-zygote", true),
+		if !runHeadless {
+			userDataDir := viper.GetString("user_data_dir")
+			Log().Infof("Running without headless enabled, using user_data_dir [%s]", userDataDir)
+			opts = []chromedp.ExecAllocatorOption{
+				chromedp.UserAgent(agent),
+				chromedp.NoFirstRun,
+				chromedp.NoDefaultBrowserCheck,
+				chromedp.Flag("user-data-dir", userDataDir),
+				chromedp.Flag("disable-site-isolation-trials", true),
+				chromedp.Flag("disable-web-security", true),
+				chromedp.Flag("test-type", true),
+			}
+		} else {
+			Log().Info("Running in headless mode")
+			opts = []chromedp.ExecAllocatorOption{
+				chromedp.UserAgent(agent),
+				chromedp.Flag("headless", true),
+				chromedp.Flag("hide-scrollbars", true),
+				chromedp.Flag("mute-audio", true),
+				chromedp.Flag("disable-gpu", true),
+				chromedp.Flag("no-sandbox", true),
+				chromedp.Flag("allow-insecure-localhost", true),
+				chromedp.Flag("ignore-certificate-errors", true),
+				chromedp.Flag("disable-web-security", true),
+			}
 		}
 	}
 
