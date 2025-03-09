@@ -82,6 +82,7 @@ type actionExecutor interface {
 type dumpData struct {
 	URL         string
 	ExtractText string
+	Ctx         context.Context
 }
 
 type emailData struct {
@@ -678,7 +679,7 @@ func (s *pageSnaps) after(ctx context.Context, err error) error {
 		if s.sendDumps {
 			Log().Errorf("Dumping content for URL [%s] to redis", s.targetURL)
 			go func() {
-				s.dumps <- dumpData{URL: s.targetURL, ExtractText: s.pageDump}
+				s.dumps <- dumpData{URL: s.targetURL, ExtractText: s.pageDump, Ctx: ctx}
 			}()
 		} else {
 			Log().Errorf("Dumping content for URL [%s] to stdout:", s.targetURL)
@@ -726,6 +727,8 @@ func setOpt(targetURL string) ([]func(*chromedp.ExecAllocator), error) {
 			chromedp.Flag("disable-site-isolation-trials", true),
 			chromedp.Flag("disable-web-security", true),
 			chromedp.Flag("test-type", true),
+			chromedp.Flag("disable-dev-shm-usage", true),
+			chromedp.Flag("disable-http2", true),
 		}
 	} else {
 		Log().Info("Running in headless mode")
