@@ -727,8 +727,6 @@ func setOpt(targetURL string) ([]func(*chromedp.ExecAllocator), error) {
 			chromedp.Flag("disable-site-isolation-trials", true),
 			chromedp.Flag("disable-web-security", true),
 			chromedp.Flag("test-type", true),
-			chromedp.Flag("disable-dev-shm-usage", true),
-			chromedp.Flag("disable-http2", true),
 		}
 	} else {
 		Log().Info("Running in headless mode")
@@ -742,6 +740,8 @@ func setOpt(targetURL string) ([]func(*chromedp.ExecAllocator), error) {
 			chromedp.Flag("allow-insecure-localhost", true),
 			chromedp.Flag("ignore-certificate-errors", true),
 			chromedp.Flag("disable-web-security", true),
+			chromedp.Flag("disable-dev-shm-usage", true),
+			chromedp.Flag("disable-http2", true),
 		}
 	}
 
