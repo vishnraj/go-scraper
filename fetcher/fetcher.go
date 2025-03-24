@@ -13,6 +13,7 @@ import (
 
 	"github.com/apsdehal/go-logger"
 	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/chromedp/chromedp/kb"
 	"github.com/go-redis/redis/v8"
@@ -188,6 +189,7 @@ func (n navigateActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 	actions = append(actions,
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			Log().Infof("Navigating to URL [%s]", n.url)
+			network.ClearBrowserCookies()
 			err := chromedp.Navigate(n.url).Do(ctx)
 			if err != nil {
 				Log().Errorf("%v", err)
