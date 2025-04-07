@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/smtp"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -190,6 +191,11 @@ func (n navigateActions) Generate(actions chromedp.Tasks) chromedp.Tasks {
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			Log().Infof("Navigating to URL [%s]", n.url)
 			network.ClearBrowserCookies()
+			network.SetExtraHTTPHeaders(network.Headers(map[string]interface{}{
+				"Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+				"Accept-Language":           "en-US,en;q=0.9",
+				"Upgrade-Insecure-Requests": "1",
+			}))
 			err := chromedp.Navigate(n.url).Do(ctx)
 			if err != nil {
 				Log().Errorf("%v", err)
@@ -757,7 +763,51 @@ func setOpt(targetURL string) ([]func(*chromedp.ExecAllocator), error) {
 		}
 	}
 
+	// Setup proxy if configured
+	proxyURL := viper.GetString("proxy_url")
+	if proxyURL != "" {
+		proxyOpts, err := setupProxyForChrome(proxyURL)
+		if err != nil {
+			Log().Errorf("Failed to set up proxy: %v", err)
+			return opts, err
+		}
+
+		// Add proxy options to the existing Chrome options
+		if proxyOpts != nil {
+			opts = append(opts, proxyOpts...)
+		}
+	}
+
 	return opts, nil
+}
+
+// setupProxyForChrome creates Chrome options for proxy configuration when proxy URL is provided
+func setupProxyForChrome(proxyURL string) ([]chromedp.ExecAllocatorOption, error) {
+	if proxyURL == "" {
+		return nil, nil // No proxy configuration needed
+	}
+
+	var proxyOpts []chromedp.ExecAllocatorOption
+
+	parsedURL, err := url.Parse(proxyURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid proxy URL: %v", err)
+	}
+
+	// Extract host:port from the URL
+	proxyHostPort := parsedURL.Host
+	if proxyHostPort == "" {
+		return nil, fmt.Errorf("proxy URL must contain host:port")
+	}
+
+	Log().Infof("Using proxy server [%s] for Chrome", proxyHostPort)
+
+	// Add proxy server flag
+	proxyOpts = append(proxyOpts,
+		chromedp.ProxyServer(proxyHostPort),
+	)
+
+	return proxyOpts, nil
 }
 
 func createChromeContext(opts []func(*chromedp.ExecAllocator)) (context.Context, context.CancelFunc) {

@@ -74,6 +74,9 @@ func init() {
 	rootCmd.PersistentFlags().Int("redis_key_expiration", 0, "The duration, in secondds that keys will remain in redis for - default value of zero makes this indefinite")
 	rootCmd.PersistentFlags().Int("redis_write_timeout", fetcher.DefaultRedisWriteTimeout, "Timeout (seconds) for writing to redis")
 	rootCmd.PersistentFlags().StringSlice("override_flags", []string{}, "Override chrome flags in key=value format; if non-empty, these flags take precedence")
+
+	// Proxy configuration option
+	rootCmd.PersistentFlags().String("proxy_url", "", "Proxy URL in format http(s)://[username:password@]host:port")
 }
 
 // initConfig reads in config file and ENV variables if set.
